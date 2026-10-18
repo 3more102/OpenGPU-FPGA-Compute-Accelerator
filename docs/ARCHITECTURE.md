@@ -71,8 +71,10 @@ The scratchpad adds a synchronous host port for independent lane/word selection.
 
 The MMIO integration test preloads lane-specific data and output sentinels, runs a four-word LOAD/ADDI/STORE/LOAD kernel with exec_mask 0x55, and verifies that only active banks change. Each bank remains private; no global memory, DMA, or host-independent data transfers are implemented.
 
-## Phase 12 — Cross-layer kernel differential validation
+## Phase 12 — Differential regression architecture
 
-Python source examples are assembled to OpenGPU machine words by `tools/opengpu_asm.py`. `tools/generate_kernel_vectors.py` independently checks architectural execution against mathematical expected values and emits hex fixture files. `tb/tb_opengpu_kernel_differential.sv` uploads the generated program and data using MMIO and validates all lane-local output words, register r5 readback, input preservation, retirement counts, and masks. `tools/run_kernel_simulations.py` runs all five fixtures using Icarus Verilog and stops immediately on a mismatch.
+`examples/differential.ogasm` (source) -> two-pass assembler -> test program image. In parallel, `tools/gen_diff_vectors.py` initializes the Python reference model with seeded lane inputs and a known initial scratchpad value, runs the assembled program, and emits expected register and memory images. `tb/tb_opengpu_differential.sv` preloads the RTL through its host ports, uploads the identical program image, executes it with the selected execution mask, and checks all architectural registers and one scratchpad word per lane. The model and hardware execution engines are independent, while the program/image format is shared for traceable comparisons.
 
-This tests actual RTL execution; it does not prove timing closure, multi-warp behavior, or operation on a physical FPGA.
+## Phase 12 — Additional MMIO differential kernel cases
+
+`tools/generate_kernel_vectors.py` assembles five source kernels, executes the Python reference and verifies independent modular-arithmetic expectations. The generated program, input, output-sentinel, expected-output and r5-register fixtures are executed by `tb/tb_opengpu_kernel_differential.sv` through the full MMIO path, checking all lanes. These supplement the existing four seeded all-register tests.

@@ -17,8 +17,9 @@ Experimental 8-lane single-warp integer SIMT compute core in synthesizable Syste
 - 32-bit cycle, retired-instruction, and taken-branch counters, readable through MMIO and reset on each accepted launch.
 - MMIO regression uploads and executes a backward-branch loop, checking the final per-lane result and two taken branches.
 - Host scratchpad I/O through a gated per-lane MMIO read/write port (preload inputs, run a kernel, retrieve outputs).
-- Phase 12 differential kernel suite: source assembler -> independent math checks and Python architectural reference -> MMIO-based RTL execution and readback.
 - Python reference model, Icarus Verilog integration simulation, Yosys generic synthesis smoke test, and CI.
+- Phase 12 seeded differential verification comparing every lane's 16 registers and scratchpad output against a separately executed Python ISA model across four execution masks and input seeds.
+- Five additional end-to-end source-assembled kernels checked against independent arithmetic oracles, Python architecture, and MMIO-observed RTL results.
 
 ## Run tests
 
@@ -26,7 +27,7 @@ Python reference: python -m unittest discover -s tests -v
 
 RTL simulation: make test-rtl
 
-Multi-kernel differential checks: make test-programs
+Five-kernel differential checks: make test-programs
 
 Generic synthesis smoke test: make test-synth
 
@@ -50,15 +51,17 @@ Example kernel: `examples/vector_add7.ogasm` (LOAD, ADDI, STORE, LOAD). Assemble
 
 The custom MMIO map adds four addresses: 0x44 MEM_SELECT (lane index in low bits, word index in bits 8–13 for the default 64-word memory), 0x48 MEM_WDATA, 0x4C MEM_CMD (write exactly 1 for a synchronous read, exactly 2 for a write), and 0x50 MEM_RDATA (latest registered read for the selected lane). Host scratchpad commands are accepted only while the core is IDLE or DONE and cannot overlap kernel memory accesses. Memory contents are intentionally not reset. The phase-11 integration regression uploads two input/output words per lane, computes on active lanes, then reads back and checks all eight banks. This is a word-at-a-time host port, not DMA or a shared/global memory subsystem.
 
-## Differential kernel validation (Phase 12)
-
-`make test-programs` generates deterministic 32-bit instruction images, lane inputs, sentinels, expected scratchpad outputs, and expected r5 register values for five cases: ADDI +7 on all lanes, ADDI +7 with mask 0x55, bitwise invert, integer square +3 with mask 0xAA, and ADDI -17. The generator checks each program against an independent arithmetic oracle and executes the Python architectural model. The RTL testbench then uploads the generated instructions and inputs through MMIO, runs the kernels, checks retirement counts and output words, and compares every lane's r5 and scratchpad contents.
-
-This is a correctness regression over five selected programs, not exhaustive verification, hardware benchmarking, or FPGA proof.
-
 ## Not implemented / not validated
 
 - Divergence stack/reconvergence, multi-warp scheduling, shared/global memory, atomics, DMA, caches, floating point, tensor/matrix acceleration, graphics, or CUDA compatibility.
 - Compiler, runtime, board-specific top wrapper, pin/clock constraints, target FPGA timing/resource reports, bitstream generation, power estimates, or physical hardware validation.
 
 Memory contents are not reset; software must store a word before loading it. Generic Yosys synthesis is not evidence of timing closure or on-board operation. See docs/ISA.md, docs/ARCHITECTURE.md, and docs/VALIDATION.md.
+
+## Phase 12 differential verification
+
+`tools/gen_diff_vectors.py` assembles `examples/differential.ogasm`, preloads reproducible 32-bit inputs in an independent Python reference model, executes the kernel under four masks (FF, 55, A3, 00), and emits expected register/memory images to `build/`. `tb/tb_opengpu_differential.sv` independently uploads the words to RTL, executes the compute core, and checks **every register in all eight lanes**, a lane-local memory word per lane, retirement count, and absence of spurious branches. The regression runs automatically under `make test-rtl` and CI. This is seeded differential testing of one instruction mix, not complete ISA proof or formal verification.
+
+## Phase 12 — Additional mathematical-oracle kernel checks
+
+`make test-programs` assembles five vector kernels (ADD +7 with masks FF and 55, bitwise invert, square +3 with mask AA, SUB 17). Each is checked against independent 32-bit arithmetic and the Python reference model, then executed in the RTL through MMIO with output scratchpad, inactive-lane and register readback assertions. This complements the seeded whole-register-file regression in `make test-rtl`; neither is an exhaustive or physical-FPGA validation.

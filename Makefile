@@ -21,9 +21,14 @@ test-rtl:
 	vvp build/opengpu_mmio_tb
 	iverilog -g2012 -s tb_opengpu_scratchpad_mmio -o build/opengpu_scratchpad_tb $(RTL_SOURCES) tb/tb_opengpu_scratchpad_mmio.sv
 	vvp build/opengpu_scratchpad_tb
+	python tools/gen_diff_vectors.py --outdir build
+	iverilog -g2012 -s tb_opengpu_differential -o build/opengpu_diff_tb $(RTL_SOURCES) tb/tb_opengpu_differential.sv
+	vvp build/opengpu_diff_tb +CASE=0
+	vvp build/opengpu_diff_tb +CASE=1
+	vvp build/opengpu_diff_tb +CASE=2
+	vvp build/opengpu_diff_tb +CASE=3
 
-# Assemble several kernels, generate reference-model fixtures, and compare
-# their MMIO-observed output data/registers against independent math oracles.
+# Independent math/reference model plus actual RTL MMIO for five vector kernels.
 test-programs:
 	mkdir -p build
 	python -m tools.generate_kernel_vectors --output build/kernel_vectors

@@ -1,0 +1,13 @@
+# 12-word register/memory kernel covering every integer ALU operation.
+ADD r3, r1, r2
+SUB r4, r3, r2
+AND r5, r4, r2
+OR r6, r5, r2
+XOR r7, r6, r2
+SHL r8, r7, r2
+SHR r9, r8, r2
+MUL r10, r9, r2
+STORE r10, [r0 + 0]
+LOAD r11, [r0 + 0]
+ADDI r12, r11, -7
+XORI r13, r12, -1
