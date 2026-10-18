@@ -1,4 +1,5 @@
 import unittest
+from pathlib import Path
 
 from sim.reference import DEMO_PROGRAM
 from tools.opengpu_asm import assemble, disassemble, disassemble_word
@@ -22,6 +23,10 @@ BNE   r1, r1, +1
 
 
 class TestAssembler(unittest.TestCase):
+    def test_checked_in_demo_source_matches_rtl_reference_words(self):
+        source_path = Path(__file__).resolve().parents[1] / "examples" / "demo.ogasm"
+        self.assertEqual(assemble(source_path.read_text(encoding="utf-8")), list(DEMO_PROGRAM))
+
     def test_demo_assembly_matches_rtl_reference_words(self):
         self.assertEqual(assemble(DEMO_SOURCE), list(DEMO_PROGRAM))
 
