@@ -1,8 +1,8 @@
-.PHONY: test test-python test-rtl test-programs test-synth assemble-demo clean
+.PHONY: test test-python test-rtl test-programs test-parameters test-synth assemble-demo clean
 
 RTL_SOURCES = rtl/opengpu_alu.sv rtl/opengpu_scratchpad.sv rtl/opengpu_core.sv rtl/opengpu_program_rom.sv rtl/opengpu_top.sv rtl/opengpu_mmio.sv
 
-test: test-python test-rtl test-programs test-synth
+test: test-python test-rtl test-programs test-parameters test-synth
 
 assemble-demo:
 	mkdir -p build
@@ -34,6 +34,14 @@ test-programs:
 	python -m tools.generate_kernel_vectors --output build/kernel_vectors
 	iverilog -g2012 -s tb_opengpu_kernel_differential -o build/opengpu_kernel_tb $(RTL_SOURCES) tb/tb_opengpu_kernel_differential.sv
 	python tools/run_kernel_simulations.py --vectors build/kernel_vectors --sim build/opengpu_kernel_tb
+
+# Parameter sweep for the generic single-warp core (simulation only).
+test-parameters:
+	mkdir -p build
+	@set -e; for lanes in 1 2 4 8 16; do \
+		iverilog -g2012 -s tb_opengpu_parameterized -Ptb_opengpu_parameterized.LANES=$lanes -o build/opengpu_parameterized_tb $(RTL_SOURCES) tb/tb_opengpu_parameterized.sv; \
+		vvp build/opengpu_parameterized_tb; \
+	done
 
 test-synth:
 	yosys -Q -p "read_verilog -sv $(RTL_SOURCES); hierarchy -check -top opengpu_mmio; synth -top opengpu_mmio -noabc; check"

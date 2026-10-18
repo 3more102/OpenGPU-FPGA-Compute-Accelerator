@@ -20,6 +20,7 @@ Experimental 8-lane single-warp integer SIMT compute core in synthesizable Syste
 - Python reference model, Icarus Verilog integration simulation, Yosys generic synthesis smoke test, and CI.
 - Phase 12 seeded differential verification comparing every lane's 16 registers and scratchpad output against a separately executed Python ISA model across four execution masks and input seeds.
 - Five additional end-to-end source-assembled kernels checked against independent arithmetic oracles, Python architecture, and MMIO-observed RTL results.
+- Parameter-sweep RTL simulations for 1, 2, 4, 8 and 16 lanes, including full/masked/zero execution masks and register/scratchpad isolation.
 
 ## Run tests
 
@@ -28,6 +29,8 @@ Python reference: python -m unittest discover -s tests -v
 RTL simulation: make test-rtl
 
 Five-kernel differential checks: make test-programs
+
+Lane-count simulation sweep: make test-parameters
 
 Generic synthesis smoke test: make test-synth
 
@@ -65,3 +68,7 @@ Memory contents are not reset; software must store a word before loading it. Gen
 ## Phase 12 — Additional mathematical-oracle kernel checks
 
 `make test-programs` assembles five vector kernels (ADD +7 with masks FF and 55, bitwise invert, square +3 with mask AA, SUB 17). Each is checked against independent 32-bit arithmetic and the Python reference model, then executed in the RTL through MMIO with output scratchpad, inactive-lane and register readback assertions. This complements the seeded whole-register-file regression in `make test-rtl`; neither is an exhaustive or physical-FPGA validation.
+
+## Phase 13 — Configurable lane simulation
+
+`make test-parameters` recompiles the identical RTL with LANES=1,2,4,8,16 and executes the built-in ROM in three modes: all lanes active, only even-numbered lanes active, and all lanes inactive. Each test checks program completion, retirement counters and masks, r0 write protection, per-lane register arithmetic, lane-local scratchpad data, masked-off write suppression, and branch behavior. This validates simulation behavior for the tested parameter settings only: memory/ALU FPGA placement and achievable timing have not been measured.
