@@ -1,11 +1,11 @@
-// Integrated FPGA-oriented OpenGPU demo: host preload -> ROM fetch -> SIMT execute.
-// This is a single warp and a four-instruction demonstration, not a complete GPU.
+// Integrated FPGA-oriented OpenGPU demo: host preload -> ROM -> SIMT core and lane-local memory.
 module opengpu_top #(
     parameter int LANES = 8,
     parameter int WIDTH = 32,
     parameter int REGS = 16,
-    parameter int PROGRAM_WORDS = 4,
-    parameter int ADDR_W = (PROGRAM_WORDS <= 1) ? 1 : $clog2(PROGRAM_WORDS)
+    parameter int PROGRAM_WORDS = 7,
+    parameter int ADDR_W = (PROGRAM_WORDS <= 1) ? 1 : $clog2(PROGRAM_WORDS),
+    parameter int MEM_ADDR_BITS = 6
 ) (
     input  logic clk,
     input  logic rst_n,
@@ -21,7 +21,7 @@ module opengpu_top #(
     output logic retire_valid,
     output logic [LANES-1:0] retire_mask,
     output logic [3:0] retire_rd,
-    output logic [LANES-1:0][WIDTH-1:0] retire_data
+    output logic [LANES*WIDTH-1:0] retire_data
 );
     typedef enum logic [1:0] {IDLE, RUN, DRAIN, DONE} state_t;
     state_t state;
@@ -35,28 +35,19 @@ module opengpu_top #(
     assign busy = (state == RUN) || (state == DRAIN);
     assign done = (state == DONE);
     assign issue_valid = (state == RUN);
-    // Preload is accepted only while idle or after completion.
     assign core_host_we = host_we && ((state == IDLE) || (state == DONE));
 
     opengpu_program_rom #(.ADDR_W(ADDR_W)) program_rom (
-        .addr(pc),
-        .instruction(instruction)
+        .addr(pc), .instruction(instruction)
     );
 
-    opengpu_core #(.LANES(LANES), .WIDTH(WIDTH), .REGS(REGS)) core (
-        .clk(clk),
-        .rst_n(rst_n),
-        .issue_valid(issue_valid),
-        .instruction(instruction),
-        .exec_mask(exec_mask),
-        .issue_ready(issue_ready),
-        .host_we(core_host_we),
-        .host_lane(host_lane),
-        .host_rd(host_rd),
-        .host_wdata(host_wdata),
-        .retire_valid(retire_valid),
-        .retire_mask(retire_mask),
-        .retire_rd(retire_rd),
+    opengpu_core #(
+        .LANES(LANES), .WIDTH(WIDTH), .REGS(REGS), .MEM_ADDR_BITS(MEM_ADDR_BITS)
+    ) core (
+        .clk(clk), .rst_n(rst_n), .issue_valid(issue_valid), .instruction(instruction),
+        .exec_mask(exec_mask), .issue_ready(issue_ready), .host_we(core_host_we),
+        .host_lane(host_lane), .host_rd(host_rd), .host_wdata(host_wdata),
+        .retire_valid(retire_valid), .retire_mask(retire_mask), .retire_rd(retire_rd),
         .retire_data(retire_data)
     );
 
@@ -68,9 +59,7 @@ module opengpu_top #(
             case (state)
                 IDLE: begin
                     pc <= '0;
-                    if (start) begin
-                        state <= RUN;
-                    end
+                    if (start) state <= RUN;
                 end
                 RUN: begin
                     if (issue_valid && issue_ready) begin
@@ -82,9 +71,7 @@ module opengpu_top #(
                     end
                 end
                 DRAIN: begin
-                    if (retire_valid) begin
-                        state <= DONE;
-                    end
+                    if (retire_valid) state <= DONE;
                 end
                 DONE: begin
                     if (start) begin
