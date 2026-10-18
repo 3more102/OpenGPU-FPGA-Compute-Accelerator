@@ -10,7 +10,7 @@ Experimental **8-lane single-warp integer SIMT compute core** in synthesizable S
 - Seven-word synthesizable demo ROM with arithmetic, STORE, LOAD, and a dependent arithmetic instruction.
 - Six-bit word addressing with one 64 x 32-bit lane-local memory bank per lane.
 - Synchronous load latency and issue backpressure while a load completes.
-- Python reference model, deterministic unit tests, top-level SystemVerilog simulation, and CI for Python plus Icarus Verilog.
+- Python reference model, deterministic unit tests, top-level SystemVerilog simulation, and CI for Python, Icarus Verilog, and Yosys generic synthesis.
 
 ## Demo program
 
@@ -28,14 +28,15 @@ Host preload initializes r1, r2, and r8 for each lane. The demo stores and reloa
 
     python -m unittest discover -s tests -v
     make test-rtl
+    make test-synth
     make test
 
-The combined target requires Python and Icarus Verilog.
+The combined target requires Python, Icarus Verilog, and Yosys.
 
 ## Not implemented / not validated
 
 - Shared/global memory, atomics, DMA, caches, multi-warp scheduling, branches, divergence/reconvergence, or a compiler/runtime.
 - Floating point, tensor/matrix acceleration, graphics, or CUDA compatibility.
-- Board-specific constraints/wrapper, FPGA synthesis/resource reports, timing closure, bitstream generation, power estimates, or physical hardware validation.
+- Board-specific constraints/wrapper, target-specific FPGA resource/timing reports, timing closure, bitstream generation, power estimates, or physical hardware validation.
 
-The lane-local data memory is not reset; a program must write a location before reading it. A passing simulation is not evidence of FPGA timing closure or on-board operation. See docs/ARCHITECTURE.md, docs/ISA.md, and docs/VALIDATION.md.
+The lane-local data memory is not reset; a program must write a location before reading it. Generic Yosys synthesis is a smoke test, not evidence of timing closure or on-board operation. See docs/ARCHITECTURE.md, docs/ISA.md, and docs/VALIDATION.md.
