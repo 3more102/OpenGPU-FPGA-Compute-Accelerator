@@ -18,5 +18,7 @@ jobs:
         run: make test-rtl
       - name: Multi-kernel differential RTL regression
         run: make test-programs
+      - name: Lane parameter sweep
+        run: make test-parameters
       - name: Generic synthesis smoke test
         run: make test-synth

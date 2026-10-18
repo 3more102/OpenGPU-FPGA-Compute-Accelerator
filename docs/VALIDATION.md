@@ -23,3 +23,7 @@ A green CI run demonstrates Python reference behavior, RTL simulation, and gener
 ## Phase 12 — Five mathematical-oracle comparisons
 
 `make test-programs` checks five assembled straight-line kernels with independent arithmetic oracles, Python-model agreement, Icarus-Verilog MMIO execution, lane masks, scratchpad input preservation, memory output, register r5 readback, and retirement counts. No timing closure or hardware operation is implied.
+
+## Phase 13 — Configurable lane-count RTL sweep
+
+A parameterized SystemVerilog integration test recompiles with LANES=1,2,4,8,16 using Icarus Verilog and executes three masks per configuration (full, even-only, all zero). Assertions check retirement counts, uniform branch behavior, r0 immutability, arithmetic values, private scratchpad words, and suppressed writes to inactive lanes. This is configuration simulation, not device-specific FPGA implementation.
