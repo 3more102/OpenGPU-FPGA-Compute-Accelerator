@@ -15,3 +15,7 @@ The default-ROM test covers arithmetic, memory round trip, immediate execution, 
 ## Evidence policy
 
 A green CI run demonstrates Python reference behavior, RTL simulation, and generic Yosys synthesis only. It does not prove target-FPGA resource utilization, timing closure, power, bitstream correctness, or on-board operation. Those require a named FPGA part, clock constraints, target-specific implementation tools, and hardware validation. No such hardware results are claimed.
+
+## Phase 12 — Model-to-RTL differential checks
+
+`make test-rtl` generates four reproducible source-assembled test cases, runs a separately implemented Python architectural model, and compares the simulated RTL's full register-file state (8 lanes × 16 registers), one memory word per lane, and completion/retirement metadata against the model. Cases use fixed seeds 7, 19, 41, and 137 and execution masks 0xFF, 0x55, 0xA3, and 0x00. The 12-word kernel includes every ALU operation, lane-local store/load, and two signed-immediate operations. Regressions are deterministic and runnable without an FPGA board. This does not test every possible program or prove timing closure.

@@ -70,3 +70,7 @@ The CI suite runs Python reference and assembler tests, three Icarus Verilog tes
 The scratchpad adds a synchronous host port for independent lane/word selection. MMIO 0x44 selects lane in the low LANE_W bits and word address at bits 8..8+MEM_ADDR_BITS-1; 0x48 stages a 32-bit write value; 0x4C accepts command 1=read or 2=write; 0x50 returns the most recent registered host read for the selected bank. Calls are rejected while busy or faulted. In a read operation, the actual memory read occurs at the following rising edge, before a subsequent MMIO read response is sampled.
 
 The MMIO integration test preloads lane-specific data and output sentinels, runs a four-word LOAD/ADDI/STORE/LOAD kernel with exec_mask 0x55, and verifies that only active banks change. Each bank remains private; no global memory, DMA, or host-independent data transfers are implemented.
+
+## Phase 12 — Differential regression architecture
+
+`examples/differential.ogasm` (source) -> two-pass assembler -> test program image. In parallel, `tools/gen_diff_vectors.py` initializes the Python reference model with seeded lane inputs and a known initial scratchpad value, runs the assembled program, and emits expected register and memory images. `tb/tb_opengpu_differential.sv` preloads the RTL through its host ports, uploads the identical program image, executes it with the selected execution mask, and checks all architectural registers and one scratchpad word per lane. The model and hardware execution engines are independent, while the program/image format is shared for traceable comparisons.

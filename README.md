@@ -18,6 +18,7 @@ Experimental 8-lane single-warp integer SIMT compute core in synthesizable Syste
 - MMIO regression uploads and executes a backward-branch loop, checking the final per-lane result and two taken branches.
 - Host scratchpad I/O through a gated per-lane MMIO read/write port (preload inputs, run a kernel, retrieve outputs).
 - Python reference model, Icarus Verilog integration simulation, Yosys generic synthesis smoke test, and CI.
+- Phase 12 seeded differential verification comparing every lane's 16 registers and scratchpad output against a separately executed Python ISA model across four execution masks and input seeds.
 
 ## Run tests
 
@@ -53,3 +54,7 @@ The custom MMIO map adds four addresses: 0x44 MEM_SELECT (lane index in low bits
 - Compiler, runtime, board-specific top wrapper, pin/clock constraints, target FPGA timing/resource reports, bitstream generation, power estimates, or physical hardware validation.
 
 Memory contents are not reset; software must store a word before loading it. Generic Yosys synthesis is not evidence of timing closure or on-board operation. See docs/ISA.md, docs/ARCHITECTURE.md, and docs/VALIDATION.md.
+
+## Phase 12 differential verification
+
+`tools/gen_diff_vectors.py` assembles `examples/differential.ogasm`, preloads reproducible 32-bit inputs in an independent Python reference model, executes the kernel under four masks (FF, 55, A3, 00), and emits expected register/memory images to `build/`. `tb/tb_opengpu_differential.sv` independently uploads the words to RTL, executes the compute core, and checks **every register in all eight lanes**, a lane-local memory word per lane, retirement count, and absence of spurious branches. The regression runs automatically under `make test-rtl` and CI. This is seeded differential testing of one instruction mix, not complete ISA proof or formal verification.
