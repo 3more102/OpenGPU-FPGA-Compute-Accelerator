@@ -82,7 +82,7 @@ module tb_opengpu_top;
                         endcase
                         if (!expected_mask[lane]) expected_value = '0;
                         if (retire_data[lane] !== expected_value)
-                            $fatal(1, "Retire %0d lane %0d data=%h expected=%h", retire_count, lane, retire_data[lane], expected_value);
+                            $fatal(1, "Retire %0d lane %0d data=%h expected=%h (core=%h)", retire_count, lane, retire_data[lane], expected_value, dut.core.retire_data[lane]);
                     end
                     retire_count++;
                 end
@@ -102,6 +102,13 @@ module tb_opengpu_top;
             preload(lane[2:0], 4'd1, lane + 1);
             preload(lane[2:0], 4'd2, 32'd10);
         end
+
+        if (dut.core.rf[0][1] !== 32'd1 || dut.core.rf[0][2] !== 32'd10)
+            $fatal(1, "Host preload failed: lane0 r1=%h r2=%h", dut.core.rf[0][1], dut.core.rf[0][2]);
+        if (dut.instruction !== 32'h0624_0000)
+            $fatal(1, "Unexpected ROM word at PC0: %h", dut.instruction);
+        if (dut.core.result[0] !== 32'd11)
+            $fatal(1, "ALU result failed before launch: a=%h b=%h result=%h", dut.core.a[0], dut.core.b[0], dut.core.result[0]);
 
         launch();
         check_run(8'hFF);
