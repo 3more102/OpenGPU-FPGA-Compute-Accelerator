@@ -1,31 +1,40 @@
-# OpenGPU Phase 6 — Host-programmable instruction memory
+# OpenGPU Phase 7 — MMIO host control and readback
 
 ## Implemented RTL
 
-- rtl/opengpu_alu.sv: eight-operation 32-bit integer ALU.
-- rtl/opengpu_scratchpad.sv: synchronous private memory bank per lane.
-- rtl/opengpu_core.sv: SIMT register file, arithmetic, signed immediate operations, lane-local LOAD/STORE, uniform branches, and divergence detection.
-- rtl/opengpu_program_rom.sv: built-in twelve-word demonstration program.
-- rtl/opengpu_top.sv: program-memory overrides, active-length latch, run controller, branch target checking, and sticky FAULT.
-- tb/tb_opengpu_top.sv: default-ROM integration and divergence fault regression.
-- tb/tb_opengpu_program_load.sv: host-uploaded kernel, active length, execution, and write-protection test.
+- rtl/opengpu_mmio.sv: single-outstanding 32-bit request/response register bus.
+- rtl/opengpu_top.sv: host-programmable instruction RAM, active program length, execution controller and status.
+- rtl/opengpu_core.sv: host register write and selected-register readback ports, SIMT execution, memory, immediate operations and branches.
+- tb/tb_opengpu_mmio.sv: uploaded-kernel execution through the bus, status polling, per-lane register readback and invalid-access response checks.
 
-## Program loading behavior
+## Register map
 
-The instruction store contains 2^ADDR_W words. A valid bit accompanies each word. On reset, valid bits clear and the built-in ROM becomes the fallback source. A host write while IDLE or DONE stores a 32-bit instruction and sets that address valid. A valid uploaded word takes priority over the ROM; unmodified addresses continue to read the ROM.
+| Address | Access | Meaning |
+|---|---|---|
+| 0x00 | W/R | CONTROL: write bit 0 to start; reads return zero |
+| 0x04 | R | STATUS: bit 0 busy, bit 1 done, bit 2 fault, bit 3 program-write-ready |
+| 0x08 | R/W | PROGRAM_LENGTH; zero selects the compiled-in default |
+| 0x0C | R/W | PROGRAM_ADDR |
+| 0x10 | R/W | PROGRAM_DATA |
+| 0x14 | W/R | PROGRAM_CMD: write bit 0 to commit PROGRAM_DATA at PROGRAM_ADDR |
+| 0x18 | R/W | REG_SELECT: lane index in low bits, register index in bits 7:4 |
+| 0x1C | R/W | REG_WDATA |
+| 0x20 | W/R | REG_CMD: write bit 0 to commit REG_WDATA to selected lane/register |
+| 0x24 | R/W | EXEC_MASK |
+| 0x28 | R | RETIRE_INFO: active mask in low bits, destination register in the next four bits |
+| 0x2C | R | RETIRE_DATA for the selected lane |
+| 0x30 | R | REG_RDATA for the selected lane/register |
+| 0x34 | R | Current program counter |
 
-The program length is a host input captured when start is accepted. Zero selects the compiled-in PROGRAM_WORDS default; larger values are clamped to the instruction-store depth. Program writes are accepted only while IDLE or DONE. Writes while RUN, DRAIN, or FAULT are ignored. A program must be fully uploaded before start. Reset invalidates uploaded words but does not clear the underlying RAM bits.
+All addresses are byte addresses and must be word-aligned. Requests are accepted when req_valid and req_ready are both high. A response is held until rsp_valid and rsp_ready handshake. Unsupported or misaligned accesses return rsp_error. Only one response may be outstanding.
 
-## Uploaded-kernel test
+## Program launch sequence
 
-The testbench uploads a three-word kernel:
+1. Set PROGRAM_LENGTH.
+2. For each instruction, write PROGRAM_ADDR, write PROGRAM_DATA, then write PROGRAM_CMD=1.
+3. Use REG_SELECT, REG_WDATA, and REG_CMD=1 to preload registers.
+4. Configure EXEC_MASK if needed.
+5. Write CONTROL=1 to launch.
+6. Poll STATUS until done or fault; read REG_SELECT and REG_RDATA to inspect results.
 
-1. ADDI r3, r1, 5
-2. ADDI r4, r3, -2
-3. ADD r5, r4, r1
-
-With r1 initialized to lane+1, expected per-lane results are r3=lane+6, r4=lane+4, and r5=2*lane+5. The test also attempts to overwrite word 0 during RUN and confirms that the write is blocked.
-
-## Boundaries
-
-This is a basic host programming port, not a standardized bus, DMA engine, software driver, or binary loader. Program and data memories are separate; the core remains single-warp and integer-only. Target FPGA resource mapping and timing are not established by generic Yosys synthesis.
+The wrapper returns an error for launch requests while busy/faulted and blocks program/register commit operations while the core is executing. This is a basic synchronous host interface, not AXI-Lite, a DMA engine, or a standardized software ABI.

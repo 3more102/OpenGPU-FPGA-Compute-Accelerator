@@ -12,6 +12,7 @@ Experimental 8-lane single-warp integer SIMT compute core in synthesizable Syste
 - One 64-word x 32-bit lane-local memory bank per lane, with synchronous LOAD and STORE support.
 - Host-programmable instruction RAM with per-word overrides of the built-in twelve-word demonstration ROM.
 - Host-selected active program length, instruction-write readiness, and protection against program writes while execution is active.
+- Simple 32-bit MMIO control/status wrapper for program upload, launch, status polling, execution-mask configuration, per-lane register preload, and register/retirement readback.
 - Python reference model, Icarus Verilog integration simulation, Yosys generic synthesis smoke test, and CI.
 
 ## Run tests
@@ -27,6 +28,10 @@ All checks: make test
 ## Program loading interface
 
 While IDLE or DONE, assert program_we for a clock edge, set program_addr and program_wdata, and confirm program_write_ready is high. Set program_length to the number of words to execute; zero selects the compiled-in default length. The program length is latched when start is accepted. Uploaded words override the ROM at matching addresses; unmodified words fall back to the ROM. Reset clears the valid map and restores ROM fallback. Program writes are blocked while RUN, DRAIN, or FAULT is active.
+
+## MMIO register map
+
+The optional opengpu_mmio wrapper exposes a single-outstanding request/response interface. Word addresses: 0x00 CONTROL (write bit 0 to start), 0x04 STATUS (busy/done/fault/program-write-ready in bits 0–3), 0x08 PROGRAM_LENGTH, 0x0C PROGRAM_ADDR, 0x10 PROGRAM_DATA, 0x14 PROGRAM_CMD (write bit 0), 0x18 REG_SELECT (lane in low bits, register index in bits 7:4), 0x1C REG_WDATA, 0x20 REG_CMD (write bit 0), 0x24 EXEC_MASK, 0x28 RETIRE_INFO, 0x2C RETIRE_DATA for the selected lane, 0x30 REG_RDATA, and 0x34 PC. Misaligned and unsupported addresses return rsp_error.
 
 ## Not implemented / not validated
 

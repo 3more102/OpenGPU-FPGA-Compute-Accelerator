@@ -15,6 +15,7 @@ module opengpu_core #(
     input  logic [((LANES <= 1) ? 1 : $clog2(LANES))-1:0] host_lane,
     input  logic [3:0] host_rd,
     input  logic [WIDTH-1:0] host_wdata,
+    output logic [WIDTH-1:0] host_rdata,
     output logic retire_valid,
     output logic [LANES-1:0] retire_mask,
     output logic [3:0] retire_rd,
@@ -68,6 +69,14 @@ module opengpu_core #(
     assign mem_store = instruction[15];
     assign accepted = issue_valid && issue_ready;
     assign issue_ready = !host_we && !load_pending;
+
+    // Host readback port for software-visible register inspection.
+    always_comb begin
+        if ((host_lane < LANES) && (host_rd != 0))
+            host_rdata = rf[host_lane][host_rd];
+        else
+            host_rdata = '0;
+    end
 
     always_comb begin
         illegal_instruction = 1'b0;
