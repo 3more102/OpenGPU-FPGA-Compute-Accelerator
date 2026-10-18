@@ -1,11 +1,11 @@
-// Integrated FPGA-oriented OpenGPU demo: host preload -> ROM fetch -> SIMT execute.
-// This is a single warp and a four-instruction demonstration, not a complete GPU.
+// Integrated FPGA-oriented OpenGPU demo: host preload -> ROM -> SIMT core and lane-local memory.
 module opengpu_top #(
     parameter int LANES = 8,
     parameter int WIDTH = 32,
     parameter int REGS = 16,
-    parameter int PROGRAM_WORDS = 4,
-    parameter int ADDR_W = (PROGRAM_WORDS <= 1) ? 1 : $clog2(PROGRAM_WORDS)
+    parameter int PROGRAM_WORDS = 7,
+    parameter int ADDR_W = (PROGRAM_WORDS <= 1) ? 1 : $clog2(PROGRAM_WORDS),
+    parameter int MEM_ADDR_BITS = 6
 ) (
     input  logic clk,
     input  logic rst_n,
@@ -35,7 +35,6 @@ module opengpu_top #(
     assign busy = (state == RUN) || (state == DRAIN);
     assign done = (state == DONE);
     assign issue_valid = (state == RUN);
-    // Preload is accepted only while idle or after completion.
     assign core_host_we = host_we && ((state == IDLE) || (state == DONE));
 
     opengpu_program_rom #(.ADDR_W(ADDR_W)) program_rom (
@@ -43,7 +42,9 @@ module opengpu_top #(
         .instruction(instruction)
     );
 
-    opengpu_core #(.LANES(LANES), .WIDTH(WIDTH), .REGS(REGS)) core (
+    opengpu_core #(
+        .LANES(LANES), .WIDTH(WIDTH), .REGS(REGS), .MEM_ADDR_BITS(MEM_ADDR_BITS)
+    ) core (
         .clk(clk),
         .rst_n(rst_n),
         .issue_valid(issue_valid),
@@ -68,9 +69,7 @@ module opengpu_top #(
             case (state)
                 IDLE: begin
                     pc <= '0;
-                    if (start) begin
-                        state <= RUN;
-                    end
+                    if (start) state <= RUN;
                 end
                 RUN: begin
                     if (issue_valid && issue_ready) begin
@@ -82,9 +81,7 @@ module opengpu_top #(
                     end
                 end
                 DRAIN: begin
-                    if (retire_valid) begin
-                        state <= DONE;
-                    end
+                    if (retire_valid) state <= DONE;
                 end
                 DONE: begin
                     if (start) begin

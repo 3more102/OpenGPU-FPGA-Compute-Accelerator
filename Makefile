@@ -1,6 +1,6 @@
 .PHONY: test test-python test-rtl clean
 
-RTL_SOURCES = rtl/opengpu_alu.sv rtl/opengpu_core.sv rtl/opengpu_program_rom.sv rtl/opengpu_top.sv
+RTL_SOURCES = rtl/opengpu_alu.sv rtl/opengpu_scratchpad.sv rtl/opengpu_core.sv rtl/opengpu_program_rom.sv rtl/opengpu_top.sv
 
 test: test-python test-rtl
 

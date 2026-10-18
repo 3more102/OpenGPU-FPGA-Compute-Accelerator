@@ -37,28 +37,43 @@ class TestReference(unittest.TestCase):
                 self.assertEqual(out[lane], expected)
                 self.assertEqual(w.regs[lane][rd], expected if (mask >> lane & 1 and rd) else before[lane][rd])
 
-    def test_demo_program_all_lanes(self):
+    def make_initialized_warp(self):
         w = Warp()
         for lane, regs in enumerate(w.regs):
             regs[1] = lane + 1
             regs[2] = 10
+            regs[8] = 0
+        return w
+
+    def test_demo_arithmetic_store_load_and_dependency(self):
+        w = self.make_initialized_warp()
         traces = [w.step(inst, 0xFF) for inst in DEMO_PROGRAM]
         self.assertEqual(traces[0], [lane + 11 for lane in range(8)])
         self.assertEqual(traces[1], [(lane + 1) ^ 10 for lane in range(8)])
         self.assertEqual(traces[2], [(lane + 1) * 10 for lane in range(8)])
         self.assertEqual(traces[3], [lane + 1 for lane in range(8)])
-        self.assertEqual([regs[6] for regs in w.regs], [lane + 1 for lane in range(8)])
+        self.assertEqual(traces[4], [0] * 8)
+        self.assertEqual(traces[5], [(lane + 1) * 10 for lane in range(8)])
+        self.assertEqual(traces[6], [(lane + 1) * 11 for lane in range(8)])
+        self.assertEqual([regs[9] for regs in w.regs], [(lane + 1) * 10 for lane in range(8)])
+        self.assertEqual([regs[10] for regs in w.regs], [(lane + 1) * 11 for lane in range(8)])
 
-    def test_demo_program_masked_lanes(self):
-        w = Warp()
-        for lane, regs in enumerate(w.regs):
-            regs[1] = lane + 1
-            regs[2] = 10
+    def test_demo_masked_lanes_and_private_banks(self):
+        w = self.make_initialized_warp()
         mask = 0b01010101
-        for inst in DEMO_PROGRAM:
-            out = w.step(inst, mask)
-        self.assertEqual(out, [1, 0, 3, 0, 5, 0, 7, 0])
-        self.assertEqual([regs[6] for regs in w.regs], [1, 0, 3, 0, 5, 0, 7, 0])
+        traces = [w.step(inst, mask) for inst in DEMO_PROGRAM]
+        self.assertEqual(traces[5], [10, 0, 30, 0, 50, 0, 70, 0])
+        self.assertEqual(traces[6], [11, 0, 33, 0, 55, 0, 77, 0])
+        self.assertEqual([regs[10] for regs in w.regs], [11, 0, 33, 0, 55, 0, 77, 0])
+        self.assertEqual(w.memory[0][0], 10)
+        self.assertIsNone(w.memory[1][0])
+        self.assertEqual(w.memory[2][0], 30)
+
+    def test_load_uninitialized_word_is_rejected_by_reference_model(self):
+        w = self.make_initialized_warp()
+        load = DEMO_PROGRAM[5]
+        with self.assertRaises(ValueError):
+            w.step(load, 0xFF)
 
 
 if __name__ == '__main__':
