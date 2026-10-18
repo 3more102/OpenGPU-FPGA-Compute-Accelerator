@@ -27,8 +27,8 @@ module opengpu_alu #(
                     AND_OP:  y[lane] = a[lane] & b[lane];
                     OR_OP:   y[lane] = a[lane] | b[lane];
                     XOR_OP:  y[lane] = a[lane] ^ b[lane];
-                    SHL:     y[lane] = a[lane] << b[lane][$clog2(WIDTH)-1:0];
-                    SHR:     y[lane] = a[lane] >> b[lane][$clog2(WIDTH)-1:0];
+                    SHL:     y[lane] = a[lane] << (b[lane] % WIDTH);
+                    SHR:     y[lane] = a[lane] >> (b[lane] % WIDTH);
                     MUL:     y[lane] = a[lane] * b[lane];
                     default: y[lane] = '0;
                 endcase
