@@ -1,4 +1,4 @@
-// Single-warp, in-order SIMT execution core with lane-local load/store support.
+// Single-warp, in-order SIMT core: integer ALU, lane-local memory, immediates and uniform branches.
 module opengpu_core #(
     parameter int LANES = 8,
     parameter int WIDTH = 32,
@@ -18,7 +18,12 @@ module opengpu_core #(
     output logic retire_valid,
     output logic [LANES-1:0] retire_mask,
     output logic [3:0] retire_rd,
-    output logic [LANES*WIDTH-1:0] retire_data
+    output logic [LANES*WIDTH-1:0] retire_data,
+    output logic branch_valid,
+    output logic branch_taken,
+    output logic branch_divergent,
+    output logic signed [15:0] branch_offset,
+    output logic illegal_instruction
 );
     logic [WIDTH-1:0] rf [0:LANES-1][0:REGS-1];
     logic [LANES*WIDTH-1:0] a;
@@ -30,32 +35,95 @@ module opengpu_core #(
     logic [LANES-1:0] mem_req_valid;
     logic mem_instruction;
     logic mem_store;
+    logic imm_instruction;
+    logic branch_instruction;
     logic [2:0] op;
     logic [3:0] rd;
     logic [3:0] rs1;
     logic [3:0] rs2;
+    logic [3:0] branch_rs_a;
+    logic [3:0] branch_rs_b;
     logic accepted;
     logic load_pending;
     logic [3:0] pending_load_rd;
     logic [LANES-1:0] pending_load_mask;
+    logic branch_predicate;
+    logic branch_reference;
+    logic branch_reference_set;
 
     assign op = instruction[31:29];
     assign rd = instruction[28:25];
     assign rs1 = instruction[24:21];
     assign rs2 = instruction[20:17];
-    assign mem_instruction = instruction[16];
+
+    // Extended encodings are disambiguated by the four-bit tag in [20:17].
+    // tag 0 + opcode 0 = lane-local memory; tag 15 = immediate ALU; tag 14 = branch.
+    assign mem_instruction = instruction[16] && (op == 3'd0) && (rs2 == 4'd0);
+    assign imm_instruction = instruction[16] && (rs2 == 4'd15);
+    assign branch_instruction = instruction[16] && (rs2 == 4'd14);
+    assign branch_valid = branch_instruction && (op != 3'd7);
+    assign branch_offset = instruction[15:0];
+    assign branch_rs_a = instruction[28:25];
+    assign branch_rs_b = instruction[24:21];
     assign mem_store = instruction[15];
     assign accepted = issue_valid && issue_ready;
     assign issue_ready = !host_we && !load_pending;
 
     always_comb begin
+        illegal_instruction = 1'b0;
+        if (instruction[16]) begin
+            if (!(mem_instruction || imm_instruction || branch_instruction))
+                illegal_instruction = 1'b1;
+            if (branch_instruction && (op == 3'd7))
+                illegal_instruction = 1'b1;
+        end
+    end
+
+    always_comb begin
         for (int lane = 0; lane < LANES; lane++) begin
             a[lane*WIDTH +: WIDTH] = (rs1 == 0) ? '0 : rf[lane][rs1];
-            b[lane*WIDTH +: WIDTH] = (rs2 == 0) ? '0 : rf[lane][rs2];
+            if (imm_instruction) begin
+                b[lane*WIDTH +: WIDTH] = {{(WIDTH-16){instruction[15]}}, instruction[15:0]};
+            end else begin
+                b[lane*WIDTH +: WIDTH] = (rs2 == 0) ? '0 : rf[lane][rs2];
+            end
             mem_addr[lane*MEM_ADDR_BITS +: MEM_ADDR_BITS] =
                 rf[lane][rs1] + {{(WIDTH-15){instruction[14]}}, instruction[14:0]};
             mem_wdata[lane*WIDTH +: WIDTH] = (rd == 0) ? '0 : rf[lane][rd];
             mem_req_valid[lane] = accepted && mem_instruction && exec_mask[lane];
+        end
+    end
+
+    // Branches are warp-uniform in this phase. A predicate disagreement across
+    // active lanes is reported as divergence; the top-level controller halts.
+    always_comb begin
+        branch_taken = 1'b0;
+        branch_divergent = 1'b0;
+        branch_reference = 1'b0;
+        branch_reference_set = 1'b0;
+        branch_predicate = 1'b0;
+        if (branch_valid) begin
+            for (int lane = 0; lane < LANES; lane++) begin
+                case (op)
+                    3'd0: branch_predicate = rf[lane][branch_rs_a] == rf[lane][branch_rs_b]; // BEQ
+                    3'd1: branch_predicate = rf[lane][branch_rs_a] != rf[lane][branch_rs_b]; // BNE
+                    3'd2: branch_predicate = $signed(rf[lane][branch_rs_a]) < $signed(rf[lane][branch_rs_b]); // BLT
+                    3'd3: branch_predicate = $signed(rf[lane][branch_rs_a]) >= $signed(rf[lane][branch_rs_b]); // BGE
+                    3'd4: branch_predicate = rf[lane][branch_rs_a] < rf[lane][branch_rs_b]; // BLTU
+                    3'd5: branch_predicate = rf[lane][branch_rs_a] >= rf[lane][branch_rs_b]; // BGEU
+                    3'd6: branch_predicate = 1'b1; // JUMP
+                    default: branch_predicate = 1'b0;
+                endcase
+                if (exec_mask[lane]) begin
+                    if (!branch_reference_set) begin
+                        branch_reference = branch_predicate;
+                        branch_taken = branch_predicate;
+                        branch_reference_set = 1'b1;
+                    end else if (branch_predicate != branch_reference) begin
+                        branch_divergent = 1'b1;
+                    end
+                end
+            end
         end
     end
 
@@ -105,14 +173,21 @@ module opengpu_core #(
                 end else begin
                     retire_valid <= 1'b1;
                     retire_mask <= exec_mask;
-                    retire_rd <= (mem_instruction && mem_store) ? 4'd0 : rd;
+                    if ((mem_instruction && mem_store) || branch_instruction || illegal_instruction)
+                        retire_rd <= 4'd0;
+                    else
+                        retire_rd <= rd;
+
                     for (int lane = 0; lane < LANES; lane++) begin
-                        if (!exec_mask[lane] || (mem_instruction && mem_store)) begin
+                        if (!exec_mask[lane] || (mem_instruction && mem_store) ||
+                            branch_instruction || illegal_instruction) begin
                             retire_data[lane*WIDTH +: WIDTH] <= '0;
                         end else begin
                             retire_data[lane*WIDTH +: WIDTH] <= result[lane*WIDTH +: WIDTH];
                         end
-                        if (exec_mask[lane] && !mem_instruction && (rd != 0)) begin
+
+                        if (exec_mask[lane] && !mem_instruction && !branch_instruction &&
+                            !illegal_instruction && (rd != 0)) begin
                             rf[lane][rd] <= result[lane*WIDTH +: WIDTH];
                         end
                     end

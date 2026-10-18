@@ -9,7 +9,8 @@ module tb_opengpu_top;
     logic [31:0] host_wdata = '0;
     logic busy;
     logic done;
-    logic [2:0] program_counter;
+    logic fault;
+    logic [3:0] program_counter;
     logic retire_valid;
     logic [7:0] retire_mask;
     logic [3:0] retire_rd;
@@ -19,10 +20,10 @@ module tb_opengpu_top;
 
     always #5 clk = ~clk;
 
-    opengpu_top #(.LANES(8), .WIDTH(32), .REGS(16), .PROGRAM_WORDS(7)) dut (
+    opengpu_top #(.LANES(8), .WIDTH(32), .REGS(16), .PROGRAM_WORDS(12)) dut (
         .clk(clk), .rst_n(rst_n), .start(start), .exec_mask(exec_mask),
         .host_we(host_we), .host_lane(host_lane), .host_rd(host_rd),
-        .host_wdata(host_wdata), .busy(busy), .done(done),
+        .host_wdata(host_wdata), .busy(busy), .done(done), .fault(fault),
         .program_counter(program_counter), .retire_valid(retire_valid),
         .retire_mask(retire_mask), .retire_rd(retire_rd), .retire_data(retire_data)
     );
@@ -55,7 +56,7 @@ module tb_opengpu_top;
         begin
             retire_count = 0;
             timeout_count = 0;
-            while (!done && timeout_count < 100) begin
+            while (!done && !fault && timeout_count < 200) begin
                 @(posedge clk);
                 #1;
                 timeout_count++;
@@ -68,9 +69,13 @@ module tb_opengpu_top;
                         4: expected_rd = 0;
                         5: expected_rd = 9;
                         6: expected_rd = 10;
+                        7: expected_rd = 11;
+                        8: expected_rd = 0;
+                        9: expected_rd = 13;
+                        10: expected_rd = 0;
                         default: expected_rd = 15;
                     endcase
-                    if (retire_count >= 7) $fatal(1, "Unexpected extra retirement");
+                    if (retire_count >= 11) $fatal(1, "Unexpected extra retirement");
                     if (retire_rd !== expected_rd)
                         $fatal(1, "Retire %0d: rd=%0d expected=%0d", retire_count, retire_rd, expected_rd);
                     if (retire_mask !== expected_mask)
@@ -84,17 +89,24 @@ module tb_opengpu_top;
                             4: expected_value = 0;
                             5: expected_value = (lane + 1) * 10;
                             6: expected_value = (lane + 1) * 11;
+                            7: expected_value = lane + 6;
+                            8: expected_value = 0;
+                            9: expected_value = (2 * lane) + 7;
+                            10: expected_value = 0;
                             default: expected_value = '0;
                         endcase
                         if (!expected_mask[lane]) expected_value = '0;
                         if (retire_data[lane*32 +: 32] !== expected_value)
                             $fatal(1, "Retire %0d lane %0d data=%h expected=%h", retire_count, lane, retire_data[lane*32 +: 32], expected_value);
                     end
+                    if ((retire_count == 8) && (program_counter !== 4'd10))
+                        $fatal(1, "Taken branch did not redirect PC to 10 (PC=%0d)", program_counter);
                     retire_count++;
                 end
             end
+            if (fault) $fatal(1, "Unexpected fault at PC=%0d", program_counter);
             if (!done) $fatal(1, "Timed out waiting for done");
-            if (retire_count != 7) $fatal(1, "Retired %0d instructions, expected 7", retire_count);
+            if (retire_count != 11) $fatal(1, "Retired %0d instructions, expected 11", retire_count);
             if (busy) $fatal(1, "busy must be low when done is high");
         end
     endtask
@@ -120,12 +132,29 @@ module tb_opengpu_top;
         launch();
         check_run(8'hFF);
 
-        // Restart with only even lanes active; stores and loads must remain masked.
+        // Masked restart checks inactive-lane write suppression and private-memory access.
         exec_mask = 8'h55;
         launch();
         check_run(8'h55);
 
-        $display("PASS: OpenGPU arithmetic, lane-local store/load, load dependency, masking and restart");
+        // Make BNE r1,r2 disagree across active lanes: lane 0 is equal; lanes 1-7 differ.
+        exec_mask = 8'hFF;
+        for (int lane = 0; lane < 8; lane++) begin
+            preload(lane[2:0], 4'd2, (lane == 0) ? 32'd1 : 32'd10);
+        end
+        launch();
+        timeout_count = 0;
+        while (!fault && !done && timeout_count < 200) begin
+            @(posedge clk);
+            #1;
+            timeout_count++;
+        end
+        if (!fault) $fatal(1, "Expected sticky fault for divergent branch");
+        if (done || busy) $fatal(1, "Fault state must stop execution without done/busy");
+        if (program_counter !== 4'd8)
+            $fatal(1, "Divergent branch should fault at PC 8, got PC=%0d", program_counter);
+
+        $display("PASS: OpenGPU immediate ALU, branch redirect, branch-not-taken, divergence fault, memory, masking and restart");
         $finish;
     end
 endmodule
