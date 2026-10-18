@@ -94,6 +94,8 @@ def _branch_offset(token: str, labels: dict[str, int], pc: int, line_no: int) ->
     key = token.strip().lower()
     if key in labels:
         offset = labels[key] - (pc + 1)
+    elif re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", token.strip()):
+        raise ValueError(f"line {line_no}: undefined label {token.strip()!r}")
     else:
         offset = parse_int(token, line_no)
     return _check_signed(offset, 16, "branch offset", line_no)
