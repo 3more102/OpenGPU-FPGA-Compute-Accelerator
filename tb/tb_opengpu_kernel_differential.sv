@@ -8,7 +8,7 @@ module tb_opengpu_kernel_differential;
     logic rsp_valid, rsp_ready = 1'b0, rsp_error;
     logic [31:0] rsp_rdata, value, status;
 
-    logic [31:0] program [0:15];
+    logic [31:0] program_words [0:15];
     logic [31:0] inputs [0:7];
     logic [31:0] sentinels [0:7];
     logic [31:0] expected_memory [0:7];
@@ -100,7 +100,7 @@ module tb_opengpu_kernel_differential;
         if (length_words < 1 || length_words > 16)
             $fatal(1, "invalid kernel word count %0d", length_words);
 
-        $readmemh(program_file, program);
+        $readmemh(program_file, program_words);
         $readmemh(inputs_file, inputs);
         $readmemh(sentinels_file, sentinels);
         $readmemh(expected_memory_file, expected_memory);
@@ -113,7 +113,7 @@ module tb_opengpu_kernel_differential;
         wr(8'h08, length_words);
         for (integer pc=0; pc<length_words; pc++) begin
             wr(8'h0C, pc);
-            wr(8'h10, program[pc]);
+            wr(8'h10, program_words[pc]);
             wr(8'h14, 32'd1);
         end
 
