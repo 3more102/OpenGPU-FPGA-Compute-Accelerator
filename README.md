@@ -13,6 +13,7 @@ Experimental 8-lane single-warp integer SIMT compute core in synthesizable Syste
 - Host-programmable instruction RAM with per-word overrides of the built-in twelve-word demonstration ROM.
 - Host-selected active program length, instruction-write readiness, and protection against program writes while execution is active.
 - Simple 32-bit MMIO control/status wrapper for program upload, launch, status polling, execution-mask configuration, per-lane register preload, and register/retirement readback.
+- Two-pass Python assembler/disassembler with labels, signed immediates, memory operands, PC-relative branches, and hex/JSON program images.
 - Python reference model, Icarus Verilog integration simulation, Yosys generic synthesis smoke test, and CI.
 
 ## Run tests
@@ -24,6 +25,8 @@ RTL simulation: make test-rtl
 Generic synthesis smoke test: make test-synth
 
 All checks: make test
+
+Assemble the sample kernel: make assemble-demo. This writes build/demo.hex. Disassemble a hex image with python tools/opengpu_asm.py build/demo.hex --disassemble.
 
 ## Program loading interface
 

@@ -1,8 +1,12 @@
-.PHONY: test test-python test-rtl test-synth clean
+.PHONY: test test-python test-rtl test-synth assemble-demo clean
 
 RTL_SOURCES = rtl/opengpu_alu.sv rtl/opengpu_scratchpad.sv rtl/opengpu_core.sv rtl/opengpu_program_rom.sv rtl/opengpu_top.sv rtl/opengpu_mmio.sv
 
 test: test-python test-rtl test-synth
+
+assemble-demo:
+	mkdir -p build
+	python tools/opengpu_asm.py examples/demo.ogasm --format hex --output build/demo.hex
 
 test-python:
 	python -m unittest discover -s tests -v

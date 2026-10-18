@@ -6,6 +6,7 @@
 - RTL simulation: make test-rtl runs the default-ROM regression and the uploaded-program regression using Icarus Verilog.
 - Generic synthesis smoke test: make test-synth using Yosys.
 - The MMIO integration regression checks instruction upload, host register writes, start, status polling, per-lane register readback, and misaligned-address error reporting.
+- Python assembler tests check parity with the RTL demo words, branch-label resolution, signed-field limits, disassembly round trips, and invalid source diagnostics.
 - CI runs all checks on pushes and pull requests.
 
 The default-ROM test covers arithmetic, memory round trip, immediate execution, taken/not-taken branches, masking, restart, and divergence fault. The program-loader test checks host register preload, instruction RAM writes, per-word ROM override, active program length, execution of uploaded instructions, and blocked writes while running.
