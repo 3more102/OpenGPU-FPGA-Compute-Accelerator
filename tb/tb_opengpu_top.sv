@@ -13,7 +13,7 @@ module tb_opengpu_top;
     logic retire_valid;
     logic [7:0] retire_mask;
     logic [3:0] retire_rd;
-    logic [31:0] retire_data [8];
+    logic [31:0] retire_data [0:7];
     int retire_count;
     int timeout_count;
 

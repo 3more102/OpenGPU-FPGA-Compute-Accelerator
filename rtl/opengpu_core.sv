@@ -18,14 +18,14 @@ module opengpu_core #(
     output logic retire_valid,
     output logic [LANES-1:0] retire_mask,
     output logic [3:0] retire_rd,
-    output logic [WIDTH-1:0] retire_data [LANES]
+    output logic [WIDTH-1:0] retire_data [0:LANES-1]
 );
     // ISA: [31:29] op, [28:25] rd, [24:21] rs1, [20:17] rs2.
     // [16:0] is reserved and must be zero in canonical instructions.
-    logic [WIDTH-1:0] rf [LANES][REGS];
-    logic [WIDTH-1:0] a [LANES];
-    logic [WIDTH-1:0] b [LANES];
-    logic [WIDTH-1:0] result [LANES];
+    logic [WIDTH-1:0] rf [0:LANES-1][0:REGS-1];
+    logic [WIDTH-1:0] a [0:LANES-1];
+    logic [WIDTH-1:0] b [0:LANES-1];
+    logic [WIDTH-1:0] result [0:LANES-1];
     logic [2:0] op;
     logic [3:0] rd;
     logic [3:0] rs1;
