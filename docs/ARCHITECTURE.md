@@ -74,3 +74,7 @@ The MMIO integration test preloads lane-specific data and output sentinels, runs
 ## Phase 12 — Differential regression architecture
 
 `examples/differential.ogasm` (source) -> two-pass assembler -> test program image. In parallel, `tools/gen_diff_vectors.py` initializes the Python reference model with seeded lane inputs and a known initial scratchpad value, runs the assembled program, and emits expected register and memory images. `tb/tb_opengpu_differential.sv` preloads the RTL through its host ports, uploads the identical program image, executes it with the selected execution mask, and checks all architectural registers and one scratchpad word per lane. The model and hardware execution engines are independent, while the program/image format is shared for traceable comparisons.
+
+## Phase 12 — Additional MMIO differential kernel cases
+
+`tools/generate_kernel_vectors.py` assembles five source kernels, executes the Python reference and verifies independent modular-arithmetic expectations. The generated program, input, output-sentinel, expected-output and r5-register fixtures are executed by `tb/tb_opengpu_kernel_differential.sv` through the full MMIO path, checking all lanes. These supplement the existing four seeded all-register tests.

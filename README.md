@@ -19,12 +19,15 @@ Experimental 8-lane single-warp integer SIMT compute core in synthesizable Syste
 - Host scratchpad I/O through a gated per-lane MMIO read/write port (preload inputs, run a kernel, retrieve outputs).
 - Python reference model, Icarus Verilog integration simulation, Yosys generic synthesis smoke test, and CI.
 - Phase 12 seeded differential verification comparing every lane's 16 registers and scratchpad output against a separately executed Python ISA model across four execution masks and input seeds.
+- Five additional end-to-end source-assembled kernels checked against independent arithmetic oracles, Python architecture, and MMIO-observed RTL results.
 
 ## Run tests
 
 Python reference: python -m unittest discover -s tests -v
 
 RTL simulation: make test-rtl
+
+Five-kernel differential checks: make test-programs
 
 Generic synthesis smoke test: make test-synth
 
@@ -58,3 +61,7 @@ Memory contents are not reset; software must store a word before loading it. Gen
 ## Phase 12 differential verification
 
 `tools/gen_diff_vectors.py` assembles `examples/differential.ogasm`, preloads reproducible 32-bit inputs in an independent Python reference model, executes the kernel under four masks (FF, 55, A3, 00), and emits expected register/memory images to `build/`. `tb/tb_opengpu_differential.sv` independently uploads the words to RTL, executes the compute core, and checks **every register in all eight lanes**, a lane-local memory word per lane, retirement count, and absence of spurious branches. The regression runs automatically under `make test-rtl` and CI. This is seeded differential testing of one instruction mix, not complete ISA proof or formal verification.
+
+## Phase 12 — Additional mathematical-oracle kernel checks
+
+`make test-programs` assembles five vector kernels (ADD +7 with masks FF and 55, bitwise invert, square +3 with mask AA, SUB 17). Each is checked against independent 32-bit arithmetic and the Python reference model, then executed in the RTL through MMIO with output scratchpad, inactive-lane and register readback assertions. This complements the seeded whole-register-file regression in `make test-rtl`; neither is an exhaustive or physical-FPGA validation.
