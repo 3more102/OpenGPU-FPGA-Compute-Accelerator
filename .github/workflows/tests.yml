@@ -16,5 +16,7 @@ jobs:
         run: python -m unittest discover -s tests -v
       - name: RTL integration simulation
         run: make test-rtl
+      - name: Multi-kernel differential RTL regression
+        run: make test-programs
       - name: Generic synthesis smoke test
         run: make test-synth

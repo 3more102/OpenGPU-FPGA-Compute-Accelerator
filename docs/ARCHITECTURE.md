@@ -70,3 +70,9 @@ The CI suite runs Python reference and assembler tests, three Icarus Verilog tes
 The scratchpad adds a synchronous host port for independent lane/word selection. MMIO 0x44 selects lane in the low LANE_W bits and word address at bits 8..8+MEM_ADDR_BITS-1; 0x48 stages a 32-bit write value; 0x4C accepts command 1=read or 2=write; 0x50 returns the most recent registered host read for the selected bank. Calls are rejected while busy or faulted. In a read operation, the actual memory read occurs at the following rising edge, before a subsequent MMIO read response is sampled.
 
 The MMIO integration test preloads lane-specific data and output sentinels, runs a four-word LOAD/ADDI/STORE/LOAD kernel with exec_mask 0x55, and verifies that only active banks change. Each bank remains private; no global memory, DMA, or host-independent data transfers are implemented.
+
+## Phase 12 — Cross-layer kernel differential validation
+
+Python source examples are assembled to OpenGPU machine words by `tools/opengpu_asm.py`. `tools/generate_kernel_vectors.py` independently checks architectural execution against mathematical expected values and emits hex fixture files. `tb/tb_opengpu_kernel_differential.sv` uploads the generated program and data using MMIO and validates all lane-local output words, register r5 readback, input preservation, retirement counts, and masks. `tools/run_kernel_simulations.py` runs all five fixtures using Icarus Verilog and stops immediately on a mismatch.
+
+This tests actual RTL execution; it does not prove timing closure, multi-warp behavior, or operation on a physical FPGA.

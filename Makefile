@@ -1,8 +1,8 @@
-.PHONY: test test-python test-rtl test-synth assemble-demo clean
+.PHONY: test test-python test-rtl test-programs test-synth assemble-demo clean
 
 RTL_SOURCES = rtl/opengpu_alu.sv rtl/opengpu_scratchpad.sv rtl/opengpu_core.sv rtl/opengpu_program_rom.sv rtl/opengpu_top.sv rtl/opengpu_mmio.sv
 
-test: test-python test-rtl test-synth
+test: test-python test-rtl test-programs test-synth
 
 assemble-demo:
 	mkdir -p build
@@ -21,6 +21,14 @@ test-rtl:
 	vvp build/opengpu_mmio_tb
 	iverilog -g2012 -s tb_opengpu_scratchpad_mmio -o build/opengpu_scratchpad_tb $(RTL_SOURCES) tb/tb_opengpu_scratchpad_mmio.sv
 	vvp build/opengpu_scratchpad_tb
+
+# Assemble several kernels, generate reference-model fixtures, and compare
+# their MMIO-observed output data/registers against independent math oracles.
+test-programs:
+	mkdir -p build
+	python tools/generate_kernel_vectors.py --output build/kernel_vectors
+	iverilog -g2012 -s tb_opengpu_kernel_differential -o build/opengpu_kernel_tb $(RTL_SOURCES) tb/tb_opengpu_kernel_differential.sv
+	python tools/run_kernel_simulations.py --vectors build/kernel_vectors --sim build/opengpu_kernel_tb
 
 test-synth:
 	yosys -Q -p "read_verilog -sv $(RTL_SOURCES); hierarchy -check -top opengpu_mmio; synth -top opengpu_mmio -noabc; check"
