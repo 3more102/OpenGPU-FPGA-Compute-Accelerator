@@ -108,6 +108,19 @@ module tb_opengpu_program_load;
         end
     endtask
 
+    // Independent driver attempts a program write while the kernel is running.
+    // It must be rejected without interrupting the retirement monitor.
+    initial begin
+        wait (busy);
+        @(negedge clk);
+        program_addr = 4'd0;
+        program_wdata = 32'h0000_0000;
+        program_we = 1'b1;
+        if (program_write_ready) $fatal(1, "Program writes must be blocked while running");
+        @(negedge clk);
+        program_we = 1'b0;
+    end
+
     initial begin
         repeat (2) @(negedge clk);
         rst_n = 1'b1;
@@ -124,16 +137,6 @@ module tb_opengpu_program_load;
             $fatal(1, "Uploaded instruction at word 0 did not override ROM");
 
         launch();
-
-        // An attempted write while running must be ignored.
-        @(negedge clk);
-        if (program_write_ready) $fatal(1, "Program writes must be blocked while running");
-        program_we = 1'b1;
-        program_addr = 4'd0;
-        program_wdata = 32'h0000_0000;
-        @(negedge clk);
-        program_we = 1'b0;
-
         check_program();
         if (dut.program_mem[0] !== 32'h063F_0005)
             $fatal(1, "Program memory changed despite write protection while running");
