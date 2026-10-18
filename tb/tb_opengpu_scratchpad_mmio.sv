@@ -95,6 +95,9 @@ module tb_opengpu_scratchpad_mmio;
         // Execute only even-numbered lanes; inactive lane outputs are untouched.
         wr(8'h24, 32'h55);
         wr(8'h00, 1);
+        // An attempted host memory write while the kernel is RUN must
+        // receive a bus error and must not corrupt the selected bank.
+        bus_req(1'b1, 8'h4C, 32'd2, 1'b1, value);
         polls = 0;
         status = 0;
         while (!status[1] && !status[2] && polls < 100) begin
