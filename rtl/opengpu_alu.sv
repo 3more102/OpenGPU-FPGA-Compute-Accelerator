@@ -4,9 +4,9 @@ module opengpu_alu #(
 ) (
     input  logic [LANES-1:0] mask,
     input  logic [2:0] op,
-    input  logic [WIDTH-1:0] a [0:LANES-1],
-    input  logic [WIDTH-1:0] b [0:LANES-1],
-    output logic [WIDTH-1:0] y [0:LANES-1]
+    input  logic [LANES-1:0][WIDTH-1:0] a,
+    input  logic [LANES-1:0][WIDTH-1:0] b,
+    output logic [LANES-1:0][WIDTH-1:0] y
 );
     localparam logic [2:0] ADD = 3'd0;
     localparam logic [2:0] SUB = 3'd1;
@@ -22,14 +22,14 @@ module opengpu_alu #(
             y[lane] = '0;
             if (mask[lane]) begin
                 case (op)
-                    ADD:    y[lane] = a[lane] + b[lane];
-                    SUB:    y[lane] = a[lane] - b[lane];
-                    AND_OP: y[lane] = a[lane] & b[lane];
-                    OR_OP:  y[lane] = a[lane] | b[lane];
-                    XOR_OP: y[lane] = a[lane] ^ b[lane];
-                    SHL:    y[lane] = a[lane] << b[lane][$clog2(WIDTH)-1:0];
-                    SHR:    y[lane] = a[lane] >> b[lane][$clog2(WIDTH)-1:0];
-                    MUL:    y[lane] = a[lane] * b[lane];
+                    ADD:     y[lane] = a[lane] + b[lane];
+                    SUB:     y[lane] = a[lane] - b[lane];
+                    AND_OP:  y[lane] = a[lane] & b[lane];
+                    OR_OP:   y[lane] = a[lane] | b[lane];
+                    XOR_OP:  y[lane] = a[lane] ^ b[lane];
+                    SHL:     y[lane] = a[lane] << b[lane][$clog2(WIDTH)-1:0];
+                    SHR:     y[lane] = a[lane] >> b[lane][$clog2(WIDTH)-1:0];
+                    MUL:     y[lane] = a[lane] * b[lane];
                     default: y[lane] = '0;
                 endcase
             end

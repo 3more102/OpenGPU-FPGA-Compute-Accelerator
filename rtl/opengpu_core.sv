@@ -23,9 +23,10 @@ module opengpu_core #(
     // ISA: [31:29] op, [28:25] rd, [24:21] rs1, [20:17] rs2.
     // [16:0] is reserved and must be zero in canonical instructions.
     logic [WIDTH-1:0] rf [0:LANES-1][0:REGS-1];
-    logic [WIDTH-1:0] a [0:LANES-1];
-    logic [WIDTH-1:0] b [0:LANES-1];
-    logic [WIDTH-1:0] result [0:LANES-1];
+    // Packed lane vectors keep the ALU interface portable across RTL simulators.
+    logic [LANES-1:0][WIDTH-1:0] a;
+    logic [LANES-1:0][WIDTH-1:0] b;
+    logic [LANES-1:0][WIDTH-1:0] result;
     logic [2:0] op;
     logic [3:0] rd;
     logic [3:0] rs1;
