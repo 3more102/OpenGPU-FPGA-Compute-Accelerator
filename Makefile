@@ -21,6 +21,12 @@ test-rtl:
 	vvp build/opengpu_mmio_tb
 	iverilog -g2012 -s tb_opengpu_scratchpad_mmio -o build/opengpu_scratchpad_tb $(RTL_SOURCES) tb/tb_opengpu_scratchpad_mmio.sv
 	vvp build/opengpu_scratchpad_tb
+	python tools/gen_diff_vectors.py --outdir build
+	iverilog -g2012 -s tb_opengpu_differential -o build/opengpu_diff_tb $(RTL_SOURCES) tb/tb_opengpu_differential.sv
+	vvp build/opengpu_diff_tb +CASE=0
+	vvp build/opengpu_diff_tb +CASE=1
+	vvp build/opengpu_diff_tb +CASE=2
+	vvp build/opengpu_diff_tb +CASE=3
 
 test-synth:
 	yosys -Q -p "read_verilog -sv $(RTL_SOURCES); hierarchy -check -top opengpu_mmio; synth -top opengpu_mmio -noabc; check"
