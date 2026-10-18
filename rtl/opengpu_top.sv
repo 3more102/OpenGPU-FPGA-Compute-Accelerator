@@ -27,7 +27,8 @@ module opengpu_top #(
     output logic retire_valid,
     output logic [LANES-1:0] retire_mask,
     output logic [3:0] retire_rd,
-    output logic [LANES*WIDTH-1:0] retire_data
+    output logic [LANES*WIDTH-1:0] retire_data,
+    output logic [WIDTH-1:0] host_rdata
 );
     localparam int PROGRAM_DEPTH = 1 << ADDR_W;
     typedef enum logic [2:0] {IDLE, RUN, DRAIN, DONE, FAULT} state_t;
@@ -102,7 +103,8 @@ module opengpu_top #(
         .exec_mask(exec_mask), .issue_ready(issue_ready), .host_we(core_host_we),
         .host_lane(host_lane), .host_rd(host_rd), .host_wdata(host_wdata),
         .retire_valid(retire_valid), .retire_mask(retire_mask), .retire_rd(retire_rd),
-        .retire_data(retire_data), .branch_valid(branch_valid), .branch_taken(branch_taken),
+        .retire_data(retire_data), .host_rdata(host_rdata),
+        .branch_valid(branch_valid), .branch_taken(branch_taken),
         .branch_divergent(branch_divergent), .branch_offset(branch_offset),
         .illegal_instruction(illegal_instruction)
     );

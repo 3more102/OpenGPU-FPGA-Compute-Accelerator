@@ -1,6 +1,6 @@
 .PHONY: test test-python test-rtl test-synth clean
 
-RTL_SOURCES = rtl/opengpu_alu.sv rtl/opengpu_scratchpad.sv rtl/opengpu_core.sv rtl/opengpu_program_rom.sv rtl/opengpu_top.sv
+RTL_SOURCES = rtl/opengpu_alu.sv rtl/opengpu_scratchpad.sv rtl/opengpu_core.sv rtl/opengpu_program_rom.sv rtl/opengpu_top.sv rtl/opengpu_mmio.sv
 
 test: test-python test-rtl test-synth
 
@@ -13,9 +13,11 @@ test-rtl:
 	vvp build/opengpu_tb
 	iverilog -g2012 -s tb_opengpu_program_load -o build/opengpu_program_load_tb $(RTL_SOURCES) tb/tb_opengpu_program_load.sv
 	vvp build/opengpu_program_load_tb
+	iverilog -g2012 -s tb_opengpu_mmio -o build/opengpu_mmio_tb $(RTL_SOURCES) tb/tb_opengpu_mmio.sv
+	vvp build/opengpu_mmio_tb
 
 test-synth:
-	yosys -Q -p "read_verilog -sv $(RTL_SOURCES); hierarchy -check -top opengpu_top; synth -top opengpu_top -noabc; check"
+	yosys -Q -p "read_verilog -sv $(RTL_SOURCES); hierarchy -check -top opengpu_mmio; synth -top opengpu_mmio -noabc; check"
 
 clean:
 	rm -rf build
