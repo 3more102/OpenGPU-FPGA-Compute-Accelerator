@@ -26,7 +26,7 @@ test-rtl:
 # their MMIO-observed output data/registers against independent math oracles.
 test-programs:
 	mkdir -p build
-	python tools/generate_kernel_vectors.py --output build/kernel_vectors
+	python -m tools.generate_kernel_vectors --output build/kernel_vectors
 	iverilog -g2012 -s tb_opengpu_kernel_differential -o build/opengpu_kernel_tb $(RTL_SOURCES) tb/tb_opengpu_kernel_differential.sv
 	python tools/run_kernel_simulations.py --vectors build/kernel_vectors --sim build/opengpu_kernel_tb
 
