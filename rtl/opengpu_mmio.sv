@@ -32,6 +32,12 @@ module opengpu_mmio #(
     logic start_pulse;
     logic host_we;
     logic program_we;
+    logic host_mem_valid;
+    logic host_mem_write;
+    logic [LANE_W-1:0] host_mem_lane_reg;
+    logic [MEM_ADDR_BITS-1:0] host_mem_addr_reg;
+    logic [WIDTH-1:0] host_mem_wdata_reg;
+    logic [WIDTH-1:0] host_mem_rdata;
     logic [LANE_W-1:0] selected_lane;
     logic [3:0] selected_rd;
     logic [WIDTH-1:0] host_wdata_reg;
@@ -62,7 +68,11 @@ module opengpu_mmio #(
     ) core_top (
         .clk(clk), .rst_n(rst_n), .start(start_pulse), .exec_mask(exec_mask_reg),
         .host_we(host_we), .host_lane(selected_lane), .host_rd(selected_rd),
-        .host_wdata(host_wdata_reg), .program_we(program_we), .program_addr(program_addr_reg),
+        .host_wdata(host_wdata_reg),
+        .host_mem_valid(host_mem_valid), .host_mem_write(host_mem_write),
+        .host_mem_lane(host_mem_lane_reg), .host_mem_addr(host_mem_addr_reg),
+        .host_mem_wdata(host_mem_wdata_reg), .host_mem_rdata(host_mem_rdata),
+        .program_we(program_we), .program_addr(program_addr_reg),
         .program_wdata(program_wdata_reg), .program_length(program_length_reg),
         .program_write_ready(program_write_ready), .busy(busy), .done(done), .fault(fault),
         .program_counter(program_counter), .retire_valid(retire_valid),
@@ -79,6 +89,11 @@ module opengpu_mmio #(
             start_pulse <= 1'b0;
             host_we <= 1'b0;
             program_we <= 1'b0;
+            host_mem_valid <= 1'b0;
+            host_mem_write <= 1'b0;
+            host_mem_lane_reg <= '0;
+            host_mem_addr_reg <= '0;
+            host_mem_wdata_reg <= '0;
             selected_lane <= '0;
             selected_rd <= '0;
             host_wdata_reg <= '0;
@@ -90,6 +105,7 @@ module opengpu_mmio #(
             start_pulse <= 1'b0;
             host_we <= 1'b0;
             program_we <= 1'b0;
+            host_mem_valid <= 1'b0;
 
             if (rsp_valid && rsp_ready)
                 rsp_valid <= 1'b0;
@@ -162,6 +178,23 @@ module opengpu_mmio #(
                             else
                                 rsp_error <= 1'b1;
                         end
+                        8'h44: begin // MEM_SELECT: lane low bits, word address bits [8 +: MEM_ADDR_BITS]
+                            if (program_write_ready && (req_wdata[LANE_W-1:0] < LANES)) begin
+                                host_mem_lane_reg <= req_wdata[LANE_W-1:0];
+                                host_mem_addr_reg <= req_wdata[8 +: MEM_ADDR_BITS];
+                            end else rsp_error <= 1'b1;
+                        end
+                        8'h48: begin // MEM_WDATA
+                            if (program_write_ready)
+                                host_mem_wdata_reg <= req_wdata;
+                            else rsp_error <= 1'b1;
+                        end
+                        8'h4C: begin // MEM_CMD: 1=read, 2=write (exact values)
+                            if (program_write_ready && ((req_wdata == 1) || (req_wdata == 2))) begin
+                                host_mem_valid <= 1'b1;
+                                host_mem_write <= (req_wdata == 2);
+                            end else rsp_error <= 1'b1;
+                        end
                         default: rsp_error <= 1'b1;
                     endcase
                 end else begin
@@ -196,6 +229,14 @@ module opengpu_mmio #(
                         8'h38: rsp_rdata <= cycle_count;
                         8'h3C: rsp_rdata <= retired_count;
                         8'h40: rsp_rdata <= branch_taken_count;
+                        8'h44: begin
+                            rsp_rdata <= 32'd0;
+                            rsp_rdata[LANE_W-1:0] <= host_mem_lane_reg;
+                            rsp_rdata[8 +: MEM_ADDR_BITS] <= host_mem_addr_reg;
+                        end
+                        8'h48: rsp_rdata <= host_mem_wdata_reg;
+                        8'h4C: rsp_rdata <= 32'd0;
+                        8'h50: rsp_rdata <= host_mem_rdata;
                         default: rsp_error <= 1'b1;
                     endcase
                 end
