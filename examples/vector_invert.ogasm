@@ -1,0 +1,5 @@
+# Bitwise 32-bit inversion in each lane; input at memory[0], output at memory[1].
+LOAD r3, [r0 + 0]
+XORI r4, r3, -1
+STORE r4, [r0 + 1]
+LOAD r5, [r0 + 1]
