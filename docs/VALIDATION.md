@@ -3,11 +3,11 @@
 ## Automated checks
 
 - Python reference tests: python -m unittest discover -s tests -v.
-- RTL integration simulation: make test-rtl using Icarus Verilog.
+- RTL simulation: make test-rtl runs the default-ROM regression and the uploaded-program regression using Icarus Verilog.
 - Generic synthesis smoke test: make test-synth using Yosys.
-- CI runs all three checks on pushes and pull requests.
+- CI runs all checks on pushes and pull requests.
 
-The reference tests cover randomized ALU behavior, signed immediates and wraparound, all implemented branch predicates, PC-relative taken/not-taken control flow, divergent-branch rejection, invalid branch targets, lane-local memory, and inactive-lane masking. The RTL integration test checks arithmetic values, STORE/LOAD round trip, load-use dependency, ADDI, branch redirection, branch fall-through, sticky divergence fault, retirement metadata, completion, and restart.
+The default-ROM test covers arithmetic, memory round trip, immediate execution, taken/not-taken branches, masking, restart, and divergence fault. The program-loader test checks host register preload, instruction RAM writes, per-word ROM override, active program length, execution of uploaded instructions, and blocked writes while running.
 
 ## Evidence policy
 

@@ -7,6 +7,11 @@ module tb_opengpu_top;
     logic [2:0] host_lane = '0;
     logic [3:0] host_rd = '0;
     logic [31:0] host_wdata = '0;
+    logic program_we = 1'b0;
+    logic [3:0] program_addr = '0;
+    logic [31:0] program_wdata = '0;
+    logic [4:0] program_length = 5'd12;
+    logic program_write_ready;
     logic busy;
     logic done;
     logic fault;
@@ -23,7 +28,9 @@ module tb_opengpu_top;
     opengpu_top #(.LANES(8), .WIDTH(32), .REGS(16), .PROGRAM_WORDS(12)) dut (
         .clk(clk), .rst_n(rst_n), .start(start), .exec_mask(exec_mask),
         .host_we(host_we), .host_lane(host_lane), .host_rd(host_rd),
-        .host_wdata(host_wdata), .busy(busy), .done(done), .fault(fault),
+        .host_wdata(host_wdata), .program_we(program_we), .program_addr(program_addr),
+        .program_wdata(program_wdata), .program_length(program_length),
+        .program_write_ready(program_write_ready), .busy(busy), .done(done), .fault(fault),
         .program_counter(program_counter), .retire_valid(retire_valid),
         .retire_mask(retire_mask), .retire_rd(retire_rd), .retire_data(retire_data)
     );

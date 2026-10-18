@@ -11,6 +11,8 @@ test-rtl:
 	mkdir -p build
 	iverilog -g2012 -s tb_opengpu_top -o build/opengpu_tb $(RTL_SOURCES) tb/tb_opengpu_top.sv
 	vvp build/opengpu_tb
+	iverilog -g2012 -s tb_opengpu_program_load -o build/opengpu_program_load_tb $(RTL_SOURCES) tb/tb_opengpu_program_load.sv
+	vvp build/opengpu_program_load_tb
 
 test-synth:
 	yosys -Q -p "read_verilog -sv $(RTL_SOURCES); hierarchy -check -top opengpu_top; synth -top opengpu_top -noabc; check"

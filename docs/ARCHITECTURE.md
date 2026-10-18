@@ -1,37 +1,31 @@
-# OpenGPU Phase 5 — Immediate operations and control flow
+# OpenGPU Phase 6 — Host-programmable instruction memory
 
 ## Implemented RTL
 
-- rtl/opengpu_alu.sv: combinational 32-bit integer ALU with eight operations and lane masking.
-- rtl/opengpu_scratchpad.sv: synchronous 64-word x 32-bit memory bank per lane; memory contents are not reset.
-- rtl/opengpu_core.sv: 16 registers per lane, host preload, register-register and immediate ALU operations, lane-local LOAD/STORE, branch predicates, uniformity detection, and retirement trace.
-- rtl/opengpu_program_rom.sv: twelve-word demonstration program.
-- rtl/opengpu_top.sv: IDLE -> RUN -> DRAIN -> DONE controller with branch redirection and sticky FAULT handling.
-- tb/tb_opengpu_top.sv: arithmetic, memory, immediate, taken/not-taken branch, mask, restart, and divergent-branch fault checks.
+- rtl/opengpu_alu.sv: eight-operation 32-bit integer ALU.
+- rtl/opengpu_scratchpad.sv: synchronous private memory bank per lane.
+- rtl/opengpu_core.sv: SIMT register file, arithmetic, signed immediate operations, lane-local LOAD/STORE, uniform branches, and divergence detection.
+- rtl/opengpu_program_rom.sv: built-in twelve-word demonstration program.
+- rtl/opengpu_top.sv: program-memory overrides, active-length latch, run controller, branch target checking, and sticky FAULT.
+- tb/tb_opengpu_top.sv: default-ROM integration and divergence fault regression.
+- tb/tb_opengpu_program_load.sv: host-uploaded kernel, active length, execution, and write-protection test.
 
-## Demo program
+## Program loading behavior
 
-| PC | Instruction | Purpose |
-|---:|---|---|
-| 0 | ADD r3, r1, r2 | Per-lane sum |
-| 1 | XOR r4, r1, r2 | Bitwise operation |
-| 2 | MUL r5, r1, r2 | Per-lane product |
-| 3 | SUB r6, r3, r2 | Verify dependent arithmetic |
-| 4 | STORE r5, [r8 + 0] | Save product in each lane's private bank |
-| 5 | LOAD r9, [r8 + 0] | Synchronous memory read |
-| 6 | ADD r10, r9, r1 | Consume loaded value |
-| 7 | ADDI r11, r1, 5 | Sign-extended immediate |
-| 8 | BNE r1, r2, +1 | Taken branch skips PC 9 |
-| 9 | ADDI r12, r1, 99 | Sentinel; must not execute in the default test |
-| 10 | ADD r13, r11, r1 | Dependent instruction at branch target |
-| 11 | BNE r1, r1, +1 | Not taken; fall through to program completion |
+The instruction store contains 2^ADDR_W words. A valid bit accompanies each word. On reset, valid bits clear and the built-in ROM becomes the fallback source. A host write while IDLE or DONE stores a 32-bit instruction and sets that address valid. A valid uploaded word takes priority over the ROM; unmodified addresses continue to read the ROM.
 
-The default preload sets r1 to lane+1, r2 to 10, and r8 to zero. Thus PC 8 branches uniformly to PC 10. The testbench then changes r2 in lane 0 only, creating a mixed BNE predicate; the core must stop at PC 8 with fault asserted.
+The program length is a host input captured when start is accepted. Zero selects the compiled-in PROGRAM_WORDS default; larger values are clamped to the instruction-store depth. Program writes are accepted only while IDLE or DONE. Writes while RUN, DRAIN, or FAULT are ignored. A program must be fully uploaded before start. Reset invalidates uploaded words but does not clear the underlying RAM bits.
 
-## Datapath and control flow
+## Uploaded-kernel test
 
-Program counter -> ROM -> decode/register read -> ALU or lane-local memory -> register writeback and retirement. On a taken uniform branch, the PC becomes PC+1+signed_offset. The target is range-checked before redirect. A divergent branch, invalid extended instruction, reserved branch opcode, or invalid target stops issue and latches FAULT until reset.
+The testbench uploads a three-word kernel:
 
-## Scope boundaries
+1. ADDI r3, r1, 5
+2. ADDI r4, r3, -2
+3. ADD r5, r4, r1
 
-Not implemented: divergent branch stacks/reconvergence, loops with dynamic iteration support beyond the simple branch mechanism, shared/global memory, atomics, DMA, caches, multiple warps, warp scheduling, floating point, tensor/matrix units, graphics, CUDA compatibility, compiler/runtime, board-specific wrapper, or target FPGA timing/resource reports.
+With r1 initialized to lane+1, expected per-lane results are r3=lane+6, r4=lane+4, and r5=2*lane+5. The test also attempts to overwrite word 0 during RUN and confirms that the write is blocked.
+
+## Boundaries
+
+This is a basic host programming port, not a standardized bus, DMA engine, software driver, or binary loader. Program and data memories are separate; the core remains single-warp and integer-only. Target FPGA resource mapping and timing are not established by generic Yosys synthesis.
