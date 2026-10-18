@@ -41,6 +41,10 @@ The optional opengpu_mmio wrapper exposes a single-outstanding request/response 
 
 ## Lane-local host data I/O
 
+Example kernel: `examples/vector_add7.ogasm` (LOAD, ADDI, STORE, LOAD). Assemble it with `python tools/opengpu_asm.py examples/vector_add7.ogasm`. The Python regression independently checks the four encoded words and applies them to all eight lane memory banks under an 0x55 execution mask.
+
+
+
 The custom MMIO map adds four addresses: 0x44 MEM_SELECT (lane index in low bits, word index in bits 8–13 for the default 64-word memory), 0x48 MEM_WDATA, 0x4C MEM_CMD (write exactly 1 for a synchronous read, exactly 2 for a write), and 0x50 MEM_RDATA (latest registered read for the selected lane). Host scratchpad commands are accepted only while the core is IDLE or DONE and cannot overlap kernel memory accesses. Memory contents are intentionally not reset. The phase-11 integration regression uploads two input/output words per lane, computes on active lanes, then reads back and checks all eight banks. This is a word-at-a-time host port, not DMA or a shared/global memory subsystem.
 
 ## Not implemented / not validated
