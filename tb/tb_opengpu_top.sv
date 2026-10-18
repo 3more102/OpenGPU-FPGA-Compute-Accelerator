@@ -20,6 +20,9 @@ module tb_opengpu_top;
     logic [7:0] retire_mask;
     logic [3:0] retire_rd;
     logic [8*32-1:0] retire_data;
+    logic [31:0] hw_cycle_count;
+    logic [31:0] hw_retired_count;
+    logic [31:0] hw_branch_taken_count;
     int retire_count;
     int timeout_count;
 
@@ -32,7 +35,9 @@ module tb_opengpu_top;
         .program_wdata(program_wdata), .program_length(program_length),
         .program_write_ready(program_write_ready), .busy(busy), .done(done), .fault(fault),
         .program_counter(program_counter), .retire_valid(retire_valid),
-        .retire_mask(retire_mask), .retire_rd(retire_rd), .retire_data(retire_data)
+        .retire_mask(retire_mask), .retire_rd(retire_rd), .retire_data(retire_data),
+        .cycle_count(hw_cycle_count), .retired_count(hw_retired_count),
+        .branch_taken_count(hw_branch_taken_count)
     );
 
     task automatic preload(input logic [2:0] lane, input logic [3:0] rd,
@@ -115,6 +120,9 @@ module tb_opengpu_top;
             if (!done) $fatal(1, "Timed out waiting for done");
             if (retire_count != 11) $fatal(1, "Retired %0d instructions, expected 11", retire_count);
             if (busy) $fatal(1, "busy must be low when done is high");
+            if (hw_cycle_count == 0) $fatal(1, "cycle counter should be nonzero after execution");
+            if (hw_retired_count != 11) $fatal(1, "hardware retired counter=%0d expected=11", hw_retired_count);
+            if (hw_branch_taken_count != 1) $fatal(1, "taken-branch counter=%0d expected=1", hw_branch_taken_count);
         end
     endtask
 

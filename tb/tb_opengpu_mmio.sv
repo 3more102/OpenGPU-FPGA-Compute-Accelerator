@@ -104,6 +104,13 @@ module tb_opengpu_mmio;
         if (!status[1]) $fatal(1, "MMIO-launched kernel timed out");
         if (status[0]) $fatal(1, "STATUS reports busy after done");
 
+        bus_read(8'h38, read_value);
+        if (read_value == 0) $fatal(1, "Cycle counter should be nonzero after execution");
+        bus_read(8'h3C, read_value);
+        if (read_value != 3) $fatal(1, "Retired counter=%0d expected=3", read_value);
+        bus_read(8'h40, read_value);
+        if (read_value != 0) $fatal(1, "Branch counter=%0d expected=0 for branch-free kernel", read_value);
+
         // Read back each lane's r5; expected value is 2*lane+5.
         for (int lane = 0; lane < 8; lane++) begin
             bus_write(8'h18, (32'd5 << 4) | lane);
