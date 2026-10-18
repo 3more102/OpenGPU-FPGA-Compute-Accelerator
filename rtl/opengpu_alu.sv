@@ -4,9 +4,9 @@ module opengpu_alu #(
 ) (
     input  logic [LANES-1:0] mask,
     input  logic [2:0] op,
-    input  logic [LANES-1:0][WIDTH-1:0] a,
-    input  logic [LANES-1:0][WIDTH-1:0] b,
-    output logic [LANES-1:0][WIDTH-1:0] y
+    input  logic [LANES*WIDTH-1:0] a,
+    input  logic [LANES*WIDTH-1:0] b,
+    output wire [LANES*WIDTH-1:0] y
 );
     localparam logic [2:0] ADD = 3'd0;
     localparam logic [2:0] SUB = 3'd1;
@@ -17,22 +17,28 @@ module opengpu_alu #(
     localparam logic [2:0] SHR = 3'd6;
     localparam logic [2:0] MUL = 3'd7;
 
-    always_comb begin
-        for (int lane = 0; lane < LANES; lane++) begin
-            y[lane] = '0;
+    for (genvar lane = 0; lane < LANES; lane++) begin : gen_lane_alu
+        wire [WIDTH-1:0] lane_a = a[lane*WIDTH +: WIDTH];
+        wire [WIDTH-1:0] lane_b = b[lane*WIDTH +: WIDTH];
+        logic [WIDTH-1:0] lane_y;
+
+        always_comb begin
+            lane_y = '0;
             if (mask[lane]) begin
                 case (op)
-                    ADD:     y[lane] = a[lane] + b[lane];
-                    SUB:     y[lane] = a[lane] - b[lane];
-                    AND_OP:  y[lane] = a[lane] & b[lane];
-                    OR_OP:   y[lane] = a[lane] | b[lane];
-                    XOR_OP:  y[lane] = a[lane] ^ b[lane];
-                    SHL:     y[lane] = a[lane] << (b[lane] % WIDTH);
-                    SHR:     y[lane] = a[lane] >> (b[lane] % WIDTH);
-                    MUL:     y[lane] = a[lane] * b[lane];
-                    default: y[lane] = '0;
+                    ADD:     lane_y = lane_a + lane_b;
+                    SUB:     lane_y = lane_a - lane_b;
+                    AND_OP:  lane_y = lane_a & lane_b;
+                    OR_OP:   lane_y = lane_a | lane_b;
+                    XOR_OP:  lane_y = lane_a ^ lane_b;
+                    SHL:     lane_y = lane_a << (lane_b % WIDTH);
+                    SHR:     lane_y = lane_a >> (lane_b % WIDTH);
+                    MUL:     lane_y = lane_a * lane_b;
+                    default: lane_y = '0;
                 endcase
             end
         end
+
+        assign y[lane*WIDTH +: WIDTH] = lane_y;
     end
 endmodule

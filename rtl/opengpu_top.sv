@@ -21,7 +21,7 @@ module opengpu_top #(
     output logic retire_valid,
     output logic [LANES-1:0] retire_mask,
     output logic [3:0] retire_rd,
-    output logic [LANES-1:0][WIDTH-1:0] retire_data
+    output logic [LANES*WIDTH-1:0] retire_data
 );
     typedef enum logic [1:0] {IDLE, RUN, DRAIN, DONE} state_t;
     state_t state;
@@ -38,26 +38,16 @@ module opengpu_top #(
     assign core_host_we = host_we && ((state == IDLE) || (state == DONE));
 
     opengpu_program_rom #(.ADDR_W(ADDR_W)) program_rom (
-        .addr(pc),
-        .instruction(instruction)
+        .addr(pc), .instruction(instruction)
     );
 
     opengpu_core #(
         .LANES(LANES), .WIDTH(WIDTH), .REGS(REGS), .MEM_ADDR_BITS(MEM_ADDR_BITS)
     ) core (
-        .clk(clk),
-        .rst_n(rst_n),
-        .issue_valid(issue_valid),
-        .instruction(instruction),
-        .exec_mask(exec_mask),
-        .issue_ready(issue_ready),
-        .host_we(core_host_we),
-        .host_lane(host_lane),
-        .host_rd(host_rd),
-        .host_wdata(host_wdata),
-        .retire_valid(retire_valid),
-        .retire_mask(retire_mask),
-        .retire_rd(retire_rd),
+        .clk(clk), .rst_n(rst_n), .issue_valid(issue_valid), .instruction(instruction),
+        .exec_mask(exec_mask), .issue_ready(issue_ready), .host_we(core_host_we),
+        .host_lane(host_lane), .host_rd(host_rd), .host_wdata(host_wdata),
+        .retire_valid(retire_valid), .retire_mask(retire_mask), .retire_rd(retire_rd),
         .retire_data(retire_data)
     );
 
