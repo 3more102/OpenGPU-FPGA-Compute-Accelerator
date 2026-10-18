@@ -16,6 +16,7 @@ Experimental 8-lane single-warp integer SIMT compute core in synthesizable Syste
 - Two-pass Python assembler/disassembler with labels, signed immediates, memory operands, PC-relative branches, and hex/JSON program images.
 - 32-bit cycle, retired-instruction, and taken-branch counters, readable through MMIO and reset on each accepted launch.
 - MMIO regression uploads and executes a backward-branch loop, checking the final per-lane result and two taken branches.
+- Host scratchpad I/O through a gated per-lane MMIO read/write port (preload inputs, run a kernel, retrieve outputs).
 - Python reference model, Icarus Verilog integration simulation, Yosys generic synthesis smoke test, and CI.
 
 ## Run tests
@@ -37,6 +38,10 @@ While IDLE or DONE, assert program_we for a clock edge, set program_addr and pro
 ## MMIO register map
 
 The optional opengpu_mmio wrapper exposes a single-outstanding request/response interface. Word addresses: 0x00 CONTROL (write bit 0 to start), 0x04 STATUS (busy/done/fault/program-write-ready in bits 0–3), 0x08 PROGRAM_LENGTH, 0x0C PROGRAM_ADDR, 0x10 PROGRAM_DATA, 0x14 PROGRAM_CMD (write bit 0), 0x18 REG_SELECT (lane in low bits, register index in bits 7:4), 0x1C REG_WDATA, 0x20 REG_CMD (write bit 0), 0x24 EXEC_MASK, 0x28 RETIRE_INFO, 0x2C RETIRE_DATA for the selected lane, 0x30 REG_RDATA, 0x34 PC, 0x38 CYCLE_COUNT, 0x3C RETIRED_COUNT, and 0x40 BRANCH_TAKEN_COUNT. Misaligned and unsupported addresses return rsp_error.
+
+## Lane-local host data I/O
+
+The custom MMIO map adds four addresses: 0x44 MEM_SELECT (lane index in low bits, word index in bits 8–13 for the default 64-word memory), 0x48 MEM_WDATA, 0x4C MEM_CMD (write exactly 1 for a synchronous read, exactly 2 for a write), and 0x50 MEM_RDATA (latest registered read for the selected lane). Host scratchpad commands are accepted only while the core is IDLE or DONE and cannot overlap kernel memory accesses. Memory contents are intentionally not reset. The phase-11 integration regression uploads two input/output words per lane, computes on active lanes, then reads back and checks all eight banks. This is a word-at-a-time host port, not DMA or a shared/global memory subsystem.
 
 ## Not implemented / not validated
 

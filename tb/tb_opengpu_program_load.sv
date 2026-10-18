@@ -28,7 +28,9 @@ module tb_opengpu_program_load;
     opengpu_top #(.LANES(8), .WIDTH(32), .REGS(16), .PROGRAM_WORDS(12)) dut (
         .clk(clk), .rst_n(rst_n), .start(start), .exec_mask(exec_mask),
         .host_we(host_we), .host_lane(host_lane), .host_rd(host_rd),
-        .host_wdata(host_wdata), .program_we(program_we), .program_addr(program_addr),
+        .host_wdata(host_wdata), .host_mem_valid(1'b0), .host_mem_write(1'b0),
+        .host_mem_lane(3'd0), .host_mem_addr(6'd0), .host_mem_wdata(32'd0),
+        .host_mem_rdata(), .program_we(program_we), .program_addr(program_addr),
         .program_wdata(program_wdata), .program_length(program_length),
         .program_write_ready(program_write_ready), .busy(busy), .done(done), .fault(fault),
         .program_counter(program_counter), .retire_valid(retire_valid),
