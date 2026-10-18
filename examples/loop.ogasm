@@ -1,0 +1,9 @@
+# Six-word loop kernel for OpenGPU v0.2.
+# Host program length: 6. Each lane executes the same uniform loop.
+ADDI r3, r0, 0
+ADDI r2, r0, 3
+loop:
+ADDI r3, r3, 1
+ADDI r2, r2, -1
+BNE r2, r0, loop
+ADD r5, r3, r0
