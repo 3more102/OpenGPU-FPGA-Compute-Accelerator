@@ -21,7 +21,7 @@ module opengpu_top #(
     output logic retire_valid,
     output logic [LANES-1:0] retire_mask,
     output logic [3:0] retire_rd,
-    output logic [WIDTH-1:0] retire_data [0:LANES-1]
+    output logic [LANES-1:0][WIDTH-1:0] retire_data
 );
     typedef enum logic [1:0] {IDLE, RUN, DRAIN, DONE} state_t;
     state_t state;

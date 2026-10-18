@@ -18,7 +18,7 @@ module opengpu_core #(
     output logic retire_valid,
     output logic [LANES-1:0] retire_mask,
     output logic [3:0] retire_rd,
-    output logic [WIDTH-1:0] retire_data [0:LANES-1]
+    output logic [LANES-1:0][WIDTH-1:0] retire_data
 );
     // ISA: [31:29] op, [28:25] rd, [24:21] rs1, [20:17] rs2.
     // [16:0] is reserved and must be zero in canonical instructions.
@@ -60,8 +60,8 @@ module opengpu_core #(
             retire_valid <= 1'b0;
             retire_mask  <= '0;
             retire_rd    <= '0;
+            retire_data  <= '0;
             for (int lane = 0; lane < LANES; lane++) begin
-                retire_data[lane] <= '0;
                 for (int reg_idx = 0; reg_idx < REGS; reg_idx++) begin
                     rf[lane][reg_idx] <= '0;
                 end
