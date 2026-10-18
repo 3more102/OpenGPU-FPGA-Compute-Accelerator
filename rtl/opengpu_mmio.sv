@@ -27,7 +27,8 @@ module opengpu_mmio #(
     // 0x14 PROGRAM_CMD (W bit0=write word), 0x18 REG_SELECT (lane[3:0], reg[7:4]),
     // 0x1C REG_WDATA, 0x20 REG_CMD (W bit0=write register),
     // 0x24 EXEC_MASK, 0x28 RETIRE_INFO (R), 0x2C RETIRE_DATA (R selected lane),
-    // 0x30 REG_RDATA (R selected register), 0x34 PC (R).
+    // 0x30 REG_RDATA (R selected register), 0x34 PC (R),
+    // 0x38 CYCLE_COUNT (R), 0x3C RETIRED_COUNT (R), 0x40 BRANCH_TAKEN_COUNT (R).
     logic start_pulse;
     logic host_we;
     logic program_we;
@@ -49,6 +50,9 @@ module opengpu_mmio #(
     logic [3:0] retire_rd;
     logic [LANES*WIDTH-1:0] retire_data;
     logic [WIDTH-1:0] host_rdata;
+    logic [31:0] cycle_count;
+    logic [31:0] retired_count;
+    logic [31:0] branch_taken_count;
 
     assign req_ready = !rsp_valid || rsp_ready;
 
@@ -63,7 +67,8 @@ module opengpu_mmio #(
         .program_write_ready(program_write_ready), .busy(busy), .done(done), .fault(fault),
         .program_counter(program_counter), .retire_valid(retire_valid),
         .retire_mask(retire_mask), .retire_rd(retire_rd), .retire_data(retire_data),
-        .host_rdata(host_rdata)
+        .host_rdata(host_rdata), .cycle_count(cycle_count), .retired_count(retired_count),
+        .branch_taken_count(branch_taken_count)
     );
 
     always_ff @(posedge clk or negedge rst_n) begin
@@ -188,6 +193,9 @@ module opengpu_mmio #(
                         end
                         8'h30: rsp_rdata <= host_rdata;
                         8'h34: rsp_rdata <= program_counter;
+                        8'h38: rsp_rdata <= cycle_count;
+                        8'h3C: rsp_rdata <= retired_count;
+                        8'h40: rsp_rdata <= branch_taken_count;
                         default: rsp_error <= 1'b1;
                     endcase
                 end

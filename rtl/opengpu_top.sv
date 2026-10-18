@@ -28,7 +28,10 @@ module opengpu_top #(
     output logic [LANES-1:0] retire_mask,
     output logic [3:0] retire_rd,
     output logic [LANES*WIDTH-1:0] retire_data,
-    output logic [WIDTH-1:0] host_rdata
+    output logic [WIDTH-1:0] host_rdata,
+    output logic [31:0] cycle_count,
+    output logic [31:0] retired_count,
+    output logic [31:0] branch_taken_count
 );
     localparam int PROGRAM_DEPTH = 1 << ADDR_W;
     typedef enum logic [2:0] {IDLE, RUN, DRAIN, DONE, FAULT} state_t;
@@ -108,6 +111,28 @@ module opengpu_top #(
         .branch_divergent(branch_divergent), .branch_offset(branch_offset),
         .illegal_instruction(illegal_instruction)
     );
+
+    // Counters reset on every accepted launch and wrap naturally at 32 bits.
+    // cycle_count includes RUN and DRAIN cycles; retired_count counts retirement pulses.
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            cycle_count <= '0;
+            retired_count <= '0;
+            branch_taken_count <= '0;
+        end else if (start && ((state == IDLE) || (state == DONE))) begin
+            cycle_count <= '0;
+            retired_count <= '0;
+            branch_taken_count <= '0;
+        end else begin
+            if (busy)
+                cycle_count <= cycle_count + 1'b1;
+            if (retire_valid)
+                retired_count <= retired_count + 1'b1;
+            if (issue_valid && issue_ready && branch_valid && branch_taken &&
+                !branch_divergent && !illegal_instruction)
+                branch_taken_count <= branch_taken_count + 1'b1;
+        end
+    end
 
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin

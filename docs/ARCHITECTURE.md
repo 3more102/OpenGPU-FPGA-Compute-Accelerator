@@ -11,6 +11,7 @@ OpenGPU is an experimental 8-lane, single-warp, 32-bit integer SIMT compute prot
 - rtl/opengpu_top.sv: host-programmable instruction memory, active program-length latch, branch target checks, completion, and sticky FAULT state.
 - rtl/opengpu_mmio.sv: simple single-outstanding 32-bit request/response host interface.
 - tools/opengpu_asm.py: assembler, label resolver, disassembler, and hex/JSON image output.
+- rtl/opengpu_top.sv: 32-bit cycle, retired-instruction, and taken-branch performance counters reset on accepted launch.
 
 ## Program memory and control flow
 
@@ -39,7 +40,7 @@ All addresses are byte addresses and must be word-aligned. The bus accepts a req
 | 0x28 | R | RETIRE_INFO: active mask in low bits, destination register in the next four bits |
 | 0x2C | R | RETIRE_DATA for the selected lane |
 | 0x30 | R | REG_RDATA for the selected lane/register |
-| 0x34 | R | Current program counter |
+| 0x34 | R | Current program counter |\n| 0x38 | R | Cycles spent in RUN and DRAIN |\n| 0x3C | R | Instructions retired in the latest run |\n| 0x40 | R | Uniform taken branches in the latest run |
 
 ## Assembler and program-image workflow
 
