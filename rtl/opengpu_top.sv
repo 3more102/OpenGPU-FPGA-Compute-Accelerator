@@ -15,6 +15,12 @@ module opengpu_top #(
     input  logic [((LANES <= 1) ? 1 : $clog2(LANES))-1:0] host_lane,
     input  logic [3:0] host_rd,
     input  logic [WIDTH-1:0] host_wdata,
+    input  logic host_mem_valid,
+    input  logic host_mem_write,
+    input  logic [((LANES <= 1) ? 1 : $clog2(LANES))-1:0] host_mem_lane,
+    input  logic [MEM_ADDR_BITS-1:0] host_mem_addr,
+    input  logic [WIDTH-1:0] host_mem_wdata,
+    output logic [WIDTH-1:0] host_mem_rdata,
     input  logic program_we,
     input  logic [ADDR_W-1:0] program_addr,
     input  logic [31:0] program_wdata,
@@ -46,6 +52,7 @@ module opengpu_top #(
     logic issue_valid;
     logic issue_ready;
     logic core_host_we;
+    logic core_host_mem_valid;
     logic branch_valid;
     logic branch_taken;
     logic branch_divergent;
@@ -59,6 +66,7 @@ module opengpu_top #(
     assign fault = (state == FAULT);
     assign issue_valid = (state == RUN);
     assign core_host_we = host_we && ((state == IDLE) || (state == DONE));
+    assign core_host_mem_valid = host_mem_valid && ((state == IDLE) || (state == DONE));
     assign program_write_ready = rst_n && ((state == IDLE) || (state == DONE));
 
     // A zero program_length selects the compiled-in default length. Clamp larger
@@ -105,6 +113,9 @@ module opengpu_top #(
         .clk(clk), .rst_n(rst_n), .issue_valid(issue_valid), .instruction(instruction),
         .exec_mask(exec_mask), .issue_ready(issue_ready), .host_we(core_host_we),
         .host_lane(host_lane), .host_rd(host_rd), .host_wdata(host_wdata),
+        .host_mem_valid(core_host_mem_valid), .host_mem_write(host_mem_write),
+        .host_mem_lane(host_mem_lane), .host_mem_addr(host_mem_addr),
+        .host_mem_wdata(host_mem_wdata), .host_mem_rdata(host_mem_rdata),
         .retire_valid(retire_valid), .retire_mask(retire_mask), .retire_rd(retire_rd),
         .retire_data(retire_data), .host_rdata(host_rdata),
         .branch_valid(branch_valid), .branch_taken(branch_taken),

@@ -16,6 +16,12 @@ module opengpu_core #(
     input  logic [3:0] host_rd,
     input  logic [WIDTH-1:0] host_wdata,
     output logic [WIDTH-1:0] host_rdata,
+    input  logic host_mem_valid,
+    input  logic host_mem_write,
+    input  logic [((LANES <= 1) ? 1 : $clog2(LANES))-1:0] host_mem_lane,
+    input  logic [MEM_ADDR_BITS-1:0] host_mem_addr,
+    input  logic [WIDTH-1:0] host_mem_wdata,
+    output logic [WIDTH-1:0] host_mem_rdata,
     output logic retire_valid,
     output logic [LANES-1:0] retire_mask,
     output logic [3:0] retire_rd,
@@ -142,7 +148,10 @@ module opengpu_core #(
 
     opengpu_scratchpad #(.LANES(LANES), .WIDTH(WIDTH), .ADDR_BITS(MEM_ADDR_BITS)) scratchpad (
         .clk(clk), .rst_n(rst_n), .req_valid(mem_req_valid), .req_write(mem_store),
-        .addr(mem_addr), .wdata(mem_wdata), .rdata(mem_rdata)
+        .addr(mem_addr), .wdata(mem_wdata), .rdata(mem_rdata),
+        .host_valid(host_mem_valid), .host_write(host_mem_write),
+        .host_lane(host_mem_lane), .host_addr(host_mem_addr),
+        .host_wdata(host_mem_wdata), .host_rdata(host_mem_rdata)
     );
 
     always_ff @(posedge clk or negedge rst_n) begin

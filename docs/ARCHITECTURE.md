@@ -1,4 +1,4 @@
-# OpenGPU Architecture and Development Phases
+# OpenGPU Architecture and Development Phases (through Phase 11)
 
 ## Current architecture
 
@@ -41,6 +41,10 @@ All addresses are byte addresses and must be word-aligned. The bus accepts a req
 | 0x2C | R | RETIRE_DATA for the selected lane |
 | 0x30 | R | REG_RDATA for the selected lane/register |
 | 0x34 | R | Current program counter |\n| 0x38 | R | Cycles spent in RUN and DRAIN |\n| 0x3C | R | Instructions retired in the latest run |\n| 0x40 | R | Uniform taken branches in the latest run |
+| 0x44 | R/W | MEM_SELECT: lane + word address |
+| 0x48 | R/W | MEM_WDATA |
+| 0x4C | W/R | MEM_CMD: 1=read, 2=write |
+| 0x50 | R | MEM_RDATA: latest selected lane read |
 
 ## Assembler and program-image workflow
 
@@ -60,3 +64,9 @@ Branches are warp-uniform in this phase. All active lanes must evaluate the pred
 ## Validation boundaries
 
 The CI suite runs Python reference and assembler tests, three Icarus Verilog testbenches, and a Yosys generic synthesis smoke test. A green run does not establish target-FPGA resource utilization, timing closure, power, bitstream correctness, or physical hardware operation. The MMIO wrapper is a small custom synchronous interface, not AXI-Lite. OpenGPU does not yet provide a compiler, standardized ABI, DMA, shared/global memory, caches, multi-warp scheduling, floating point, tensor acceleration, graphics, or CUDA compatibility.
+
+## Phase 11 — Host lane-local scratchpad access
+
+The scratchpad adds a synchronous host port for independent lane/word selection. MMIO 0x44 selects lane in the low LANE_W bits and word address at bits 8..8+MEM_ADDR_BITS-1; 0x48 stages a 32-bit write value; 0x4C accepts command 1=read or 2=write; 0x50 returns the most recent registered host read for the selected bank. Calls are rejected while busy or faulted. In a read operation, the actual memory read occurs at the following rising edge, before a subsequent MMIO read response is sampled.
+
+The MMIO integration test preloads lane-specific data and output sentinels, runs a four-word LOAD/ADDI/STORE/LOAD kernel with exec_mask 0x55, and verifies that only active banks change. Each bank remains private; no global memory, DMA, or host-independent data transfers are implemented.
