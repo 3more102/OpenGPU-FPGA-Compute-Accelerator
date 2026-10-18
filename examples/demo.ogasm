@@ -1,0 +1,15 @@
+# OpenGPU v0.2 demonstration kernel.
+# Host preload: r1 = lane + 1, r2 = 10, r8 = 0.
+ADD   r3,  r1,  r2
+XOR   r4,  r1,  r2
+MUL   r5,  r1,  r2
+SUB   r6,  r3,  r2
+STORE r5, [r8 + 0]
+LOAD  r9, [r8 + 0]
+ADD   r10, r9, r1
+ADDI  r11, r1, 5
+BNE   r1, r2, after_sentinel
+ADDI  r12, r1, 99
+after_sentinel:
+ADD   r13, r11, r1
+BNE   r1, r1, +1
