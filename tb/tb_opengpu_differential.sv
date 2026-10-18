@@ -21,7 +21,7 @@ module tb_opengpu_differential;
     logic [7:0] retire_mask;
     logic [255:0] retire_data;
     logic [31:0] cycle_count, retired_count, branch_taken_count;
-    logic [31:0] program [0:11];
+    logic [31:0] program_words [0:11];
     logic [31:0] initial_regs [0:15];
     logic [31:0] initial_mem [0:7];
     logic [31:0] expected_regs [0:127];
@@ -107,7 +107,7 @@ module tb_opengpu_differential;
             $fatal(1, "invalid testcase %0d", testcase);
 
         filename = $sformatf("build/diff_%0d_program.hex", testcase);
-        $readmemh(filename, program);
+        $readmemh(filename, program_words);
         filename = $sformatf("build/diff_%0d_preload.hex", testcase);
         $readmemh(filename, initial_regs);
         filename = $sformatf("build/diff_%0d_sentinels.hex", testcase);
@@ -123,7 +123,7 @@ module tb_opengpu_differential;
         rst_n = 1'b1;
         exec_mask = masks[0];
         for (int pc = 0; pc < 12; pc++)
-            upload(pc[3:0], program[pc]);
+            upload(pc[3:0], program_words[pc]);
         for (int lane = 0; lane < 8; lane++) begin
             preload(lane[2:0], 4'd1, initial_regs[2*lane]);
             preload(lane[2:0], 4'd2, initial_regs[2*lane+1]);
