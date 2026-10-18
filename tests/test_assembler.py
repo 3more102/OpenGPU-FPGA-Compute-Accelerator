@@ -49,6 +49,14 @@ class TestAssembler(unittest.TestCase):
         text = "\n".join(disassemble(words)) + "\n"
         self.assertEqual(assemble(text), words)
 
+    def test_backward_loop_example_encodes_signed_branch_offset(self):
+        source_path = Path(__file__).resolve().parents[1] / "examples" / "loop.ogasm"
+        words = assemble(source_path.read_text(encoding="utf-8"))
+        self.assertEqual(words, [
+            0x061F0000, 0x041F0003, 0x067F0001,
+            0x045FFFFF, 0x241DFFFD, 0x0A600000,
+        ])
+
     def test_nop_alias(self):
         self.assertEqual(assemble("NOP\n"), [0])
         self.assertEqual(disassemble_word(0), "ADD r0, r0, r0")

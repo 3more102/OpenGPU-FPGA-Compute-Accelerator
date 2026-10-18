@@ -119,6 +119,48 @@ module tb_opengpu_mmio;
                 $fatal(1, "Lane %0d r5=%0d expected=%0d", lane, read_value, (2 * lane + 5));
         end
 
+        // Upload and execute a backward-branch loop:
+        // r3=0; r2=3; loop: r3++; r2--; BNE r2,r0,loop; r5=r3.
+        bus_write(8'h08, 32'd6);
+        bus_write(8'h0C, 32'd0);
+        bus_write(8'h10, 32'h061F_0000);  // ADDI r3,r0,0
+        bus_write(8'h14, 32'd1);
+        bus_write(8'h0C, 32'd1);
+        bus_write(8'h10, 32'h041F_0003);  // ADDI r2,r0,3
+        bus_write(8'h14, 32'd1);
+        bus_write(8'h0C, 32'd2);
+        bus_write(8'h10, 32'h067F_0001);  // loop: ADDI r3,r3,1
+        bus_write(8'h14, 32'd1);
+        bus_write(8'h0C, 32'd3);
+        bus_write(8'h10, 32'h045F_FFFF);  // ADDI r2,r2,-1
+        bus_write(8'h14, 32'd1);
+        bus_write(8'h0C, 32'd4);
+        bus_write(8'h10, 32'h241D_FFFD);  // BNE r2,r0,-3 (back to PC 2)
+        bus_write(8'h14, 32'd1);
+        bus_write(8'h0C, 32'd5);
+        bus_write(8'h10, 32'h0A60_0000);  // ADD r5,r3,r0
+        bus_write(8'h14, 32'd1);
+
+        bus_write(8'h00, 32'd1);
+        timeout_count = 0;
+        status = '0;
+        while (!status[1] && !status[2] && timeout_count < 100) begin
+            bus_read(8'h04, status);
+            timeout_count++;
+        end
+        if (status[2]) $fatal(1, "Loop kernel entered FAULT");
+        if (!status[1]) $fatal(1, "Loop kernel timed out");
+        bus_read(8'h3C, read_value);
+        if (read_value != 12) $fatal(1, "Loop retired counter=%0d expected=12", read_value);
+        bus_read(8'h40, read_value);
+        if (read_value != 2) $fatal(1, "Loop taken-branch counter=%0d expected=2", read_value);
+        for (int lane = 0; lane < 8; lane++) begin
+            bus_write(8'h18, (32'd5 << 4) | lane);
+            bus_read(8'h30, read_value);
+            if (read_value != 3)
+                $fatal(1, "Loop result lane %0d r5=%0d expected=3", lane, read_value);
+        end
+
         // Misaligned accesses must return an error response.
         @(negedge clk);
         req_valid = 1'b1;
