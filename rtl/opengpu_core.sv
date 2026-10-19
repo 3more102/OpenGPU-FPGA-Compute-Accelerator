@@ -54,6 +54,8 @@ module opengpu_core #(
     logic load_pending;
     logic [3:0] pending_load_rd;
     logic [LANES-1:0] pending_load_mask;
+    wire scratchpad_host_ready;
+    wire scratchpad_host_error;
     logic branch_predicate;
     logic branch_reference;
     logic branch_reference_set;
@@ -151,7 +153,8 @@ module opengpu_core #(
         .addr(mem_addr), .wdata(mem_wdata), .rdata(mem_rdata),
         .host_valid(host_mem_valid), .host_write(host_mem_write),
         .host_lane(host_mem_lane), .host_addr(host_mem_addr),
-        .host_wdata(host_mem_wdata), .host_rdata(host_mem_rdata)
+        .host_wdata(host_mem_wdata), .host_rdata(host_mem_rdata),
+        .host_ready(scratchpad_host_ready), .host_error(scratchpad_host_error)
     );
 
     always_ff @(posedge clk or negedge rst_n) begin
