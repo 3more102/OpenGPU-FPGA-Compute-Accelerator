@@ -179,7 +179,9 @@ module opengpu_mmio #(
                                 rsp_error <= 1'b1;
                         end
                         8'h44: begin // MEM_SELECT: lane low bits, word address bits [8 +: MEM_ADDR_BITS]
-                            if (program_write_ready && (req_wdata[LANE_W-1:0] < LANES)) begin
+                            if (program_write_ready && (req_wdata[LANE_W-1:0] < LANES) &&
+                                ((req_wdata >> (8 + MEM_ADDR_BITS)) == 0) &&
+                                (((req_wdata & 32'hff) >> LANE_W) == 0)) begin
                                 host_mem_lane_reg <= req_wdata[LANE_W-1:0];
                                 host_mem_addr_reg <= req_wdata[8 +: MEM_ADDR_BITS];
                             end else rsp_error <= 1'b1;
