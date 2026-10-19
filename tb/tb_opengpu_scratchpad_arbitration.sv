@@ -42,6 +42,17 @@ module tb_opengpu_scratchpad_arbitration;
     req_valid=0; req_write=0; host_write=0;
     @(negedge clk);
     if(host_rdata !== 32'hCAFEBABE) $fatal(1,"core priority or memory readback failed");
+    // Core synchronous read returns the previous core-written value.
+    host_valid=0;
+    req_valid=3'b010;
+    req_write=0;
+    @(negedge clk);
+    if(rdata[63:32] !== 32'hCAFEBABE)
+      $fatal(1,"core synchronous readback mismatch");
+    if(rdata[31:0] !== 32'h00000000)
+      $fatal(1,"inactive lane read register changed");
+    req_valid=0;
+    host_valid=1;
     // Invalid lane index must not modify any memory bank.
     host_lane=3; host_write=1; host_wdata=32'hFFFFFFFF;
     #1;
