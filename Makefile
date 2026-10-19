@@ -1,8 +1,8 @@
-.PHONY: test test-scheduler test-python test-rtl test-programs test-parameters test-synth assemble-demo clean
+.PHONY: test test-context test-scheduler test-python test-rtl test-programs test-parameters test-synth assemble-demo clean
 
 RTL_SOURCES = rtl/opengpu_alu.sv rtl/opengpu_scratchpad.sv rtl/opengpu_core.sv rtl/opengpu_program_rom.sv rtl/opengpu_top.sv rtl/opengpu_mmio.sv
 
-test: test-scheduler test-python test-rtl test-programs test-parameters test-synth
+test: test-context test-scheduler test-python test-rtl test-programs test-parameters test-synth
 
 assemble-demo:
 	mkdir -p build
@@ -56,3 +56,9 @@ test-scheduler:
 	mkdir -p build
 	iverilog -g2012 -s tb_opengpu_warp_scheduler -o build/opengpu_warp_scheduler_tb rtl/opengpu_warp_scheduler.sv tb/tb_opengpu_warp_scheduler.sv
 	vvp build/opengpu_warp_scheduler_tb
+
+# Phase 16 independent per-warp control-context regression.
+test-context:
+	mkdir -p build
+	iverilog -g2012 -s tb_opengpu_warp_context -o build/opengpu_warp_context_tb rtl/opengpu_warp_context.sv tb/tb_opengpu_warp_context.sv
+	vvp build/opengpu_warp_context_tb
