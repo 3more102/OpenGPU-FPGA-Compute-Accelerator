@@ -19,6 +19,10 @@ module tb_opengpu_scratchpad_arbitration;
     .host_addr(host_addr),.host_wdata(host_wdata),.host_rdata(host_rdata),
     .host_ready(host_ready),.host_error(host_error));
   initial begin
+    #2000;
+    $fatal(1,"test timeout");
+  end
+  initial begin
     repeat(2) @(negedge clk); rst_n=1;
     @(negedge clk);
     host_valid=1; host_write=1; host_lane=1; host_addr=4;
