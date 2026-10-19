@@ -18,10 +18,17 @@ module opengpu_scratchpad #(
     input  logic [((LANES <= 1) ? 1 : $clog2(LANES))-1:0] host_lane,
     input  logic [ADDR_BITS-1:0] host_addr,
     input  logic [WIDTH-1:0] host_wdata,
-    output wire [WIDTH-1:0] host_rdata
+    output wire [WIDTH-1:0] host_rdata,
+    output wire host_ready,
+    output wire host_error
 );
     localparam int DEPTH = 1 << ADDR_BITS;
     wire [LANES*WIDTH-1:0] host_rdata_banks;
+    // A host request is accepted only when no lane has an execution request.
+    // Invalid lane indices are rejected without modifying any bank.
+    assign host_ready = !(|req_valid);
+    assign host_error = host_valid && (host_lane >= LANES);
+    wire host_accept = host_valid && host_ready && !host_error;
     assign host_rdata = (host_lane < LANES) ?
         host_rdata_banks[host_lane*WIDTH +: WIDTH] : '0;
 
@@ -31,7 +38,7 @@ module opengpu_scratchpad #(
         logic [WIDTH-1:0] host_rdata_reg;
         wire [ADDR_BITS-1:0] lane_addr = addr[lane*ADDR_BITS +: ADDR_BITS];
         wire [WIDTH-1:0] lane_wdata = wdata[lane*WIDTH +: WIDTH];
-        wire selected = host_valid && (host_lane == lane);
+        wire selected = host_accept && (host_lane == lane);
 
         always_ff @(posedge clk or negedge rst_n) begin
             if (!rst_n) begin
