@@ -24,6 +24,10 @@ module opengpu_scratchpad #(
 );
     localparam int DEPTH = 1 << ADDR_BITS;
     wire [LANES*WIDTH-1:0] host_rdata_banks;
+    // Host and core ports are mutually exclusive across all banks. The core
+    // always wins on contention; the host must retry when host_ready is low.
+    // Memory contents persist across reset, but both readback registers reset.
+    // A read response appears after the accepting rising edge.
     // A host request is accepted only when no lane has an execution request.
     // Invalid lane indices are rejected without modifying any bank.
     assign host_ready = !(|req_valid);
