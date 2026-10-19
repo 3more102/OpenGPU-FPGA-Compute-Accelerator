@@ -91,7 +91,7 @@ module tb_opengpu_scratchpad_mmio;
 
         // Reject noncanonical selectors rather than silently truncating them.
         bus_req(1'b1, 8'h44, 32'h00004000, 1'b1, value);
-        bus_req(1'b1, 8'h44, 32'h00000008, 1'b1, value);
+        bus_req(1'b1, 8'h44, 32'h00000080, 1'b1, value);
         rd(8'h44, value);
         if (value !== ((0 << 8) | 7))
             $fatal(1, "rejected memory selector modified active selection");
