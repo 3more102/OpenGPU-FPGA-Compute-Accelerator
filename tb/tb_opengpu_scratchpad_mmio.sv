@@ -89,6 +89,12 @@ module tb_opengpu_scratchpad_mmio;
                 $fatal(1, "host preload/readback lane=%0d got=%h", lane, value);
         end
 
+        // Reject noncanonical selectors rather than silently truncating them.
+        bus_req(1'b1, 8'h44, 32'h00004000, 1'b1, value);
+        bus_req(1'b1, 8'h44, 32'h00000008, 1'b1, value);
+        rd(8'h44, value);
+        if (value !== ((0 << 8) | 7))
+            $fatal(1, "rejected memory selector modified active selection");
         // Reject invalid command encoding before any kernel memory accesses.
         bus_req(1'b1, 8'h4C, 32'd3, 1'b1, value);
 
