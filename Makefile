@@ -13,6 +13,8 @@ test-python:
 
 test-rtl:
 	mkdir -p build
+	iverilog -g2012 -s tb_opengpu_scratchpad_arbitration -o build/opengpu_arb_tb $(RTL_SOURCES) tb/tb_opengpu_scratchpad_arbitration.sv
+	vvp build/opengpu_arb_tb
 	iverilog -g2012 -s tb_opengpu_top -o build/opengpu_tb $(RTL_SOURCES) tb/tb_opengpu_top.sv
 	vvp build/opengpu_tb
 	iverilog -g2012 -s tb_opengpu_program_load -o build/opengpu_program_load_tb $(RTL_SOURCES) tb/tb_opengpu_program_load.sv
