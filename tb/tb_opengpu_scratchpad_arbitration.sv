@@ -53,6 +53,13 @@ module tb_opengpu_scratchpad_arbitration;
       $fatal(1,"inactive lane read register changed");
     req_valid=0;
     host_valid=1;
+    // Host readback remains stable when no read is accepted.
+    host_valid=0;
+    host_lane=1;
+    repeat(2) @(negedge clk);
+    if(host_rdata !== 32'hCAFEBABE)
+      $fatal(1,"host readback register changed without request");
+    host_valid=1;
     // Invalid lane index must not modify any memory bank.
     host_lane=3; host_write=1; host_wdata=32'hFFFFFFFF;
     #1;
